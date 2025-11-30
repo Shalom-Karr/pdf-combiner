@@ -6,7 +6,6 @@
     <title>Visual PDF Editor Pro (Secure)</title>
 
     <!-- LOCAL LIBRARIES -->
-    <!-- Ensure your files are in the 'js' folder as discussed -->
     <script src="js/pdf-lib.min.js" defer></script>
     <script src="js/pdf.min.js" defer></script>
     <script src="js/sortable.min.js" defer></script>
@@ -34,10 +33,14 @@
         :root { --grid-size: 180px; }
         .dynamic-grid { grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); }
         
-        /* Pattern background for transparency */
-        .bg-pattern {
-            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
-            background-size: 10px 10px;
+        /* Draggable Preview Styles */
+        #preview-container {
+            cursor: crosshair;
+        }
+        #preview-text-layer {
+            cursor: move;
+            user-select: none;
+            touch-action: none;
         }
     </style>
 </head>
@@ -52,7 +55,6 @@
                 <h1 class="text-3xl font-bold mb-2">Visual PDF Editor</h1>
                 <p class="opacity-90 mb-4">Combine, reorder, edit, and add headers to your PDFs.</p>
                 
-                <!-- HIPAA BANNER -->
                 <div class="inline-flex items-center gap-2 bg-green-500/20 border border-green-500/50 text-green-100 px-4 py-2 rounded-full text-sm font-medium">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                     HIPAA Compliant: 100% Local Processing. No uploads.
@@ -88,7 +90,6 @@
                 <p class="text-sm text-slate-400 italic">Add files to begin.</p>
             </div>
             
-            <!-- Sidebar Tools -->
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-4">
                 <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Tools</h3>
                 
@@ -106,7 +107,7 @@
                 
                 <button id="openTextModalBtn" class="w-full py-2 px-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm font-medium flex items-center justify-center gap-2 transition shadow-sm">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg> 
-                    Add Text / Header
+                    Add Text, Headers & Footers
                 </button>
             </div>
         </aside>
@@ -125,8 +126,14 @@
                         </button>
                     </div>
 
-                    <!-- Toolbar Actions -->
                     <div class="flex items-center gap-2">
+                        <!-- Custom Filename Input -->
+                        <div class="hidden md:flex items-center mr-2 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 px-2 h-9">
+                            <span class="text-xs text-slate-400 mr-1">Name:</span>
+                            <input type="text" id="filenameInput" placeholder="document" class="w-32 bg-transparent border-none text-sm focus:ring-0 p-1 outline-none dark:text-white">
+                            <span class="text-xs text-slate-400">.pdf</span>
+                        </div>
+
                         <div class="flex items-center bg-slate-100 dark:bg-slate-700 rounded-lg p-1 mr-2">
                             <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition" title="Undo"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
                             <button id="redoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition" title="Redo"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 7v6h-6M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg></button>
@@ -153,28 +160,26 @@
 
             <!-- GRID AREA -->
             <div id="page-grid-container" class="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-slate-900/50">
-                <div id="page-grid" class="grid gap-6 dynamic-grid pb-20">
-                    <!-- Thumbnails Injected Here -->
-                </div>
+                <div id="page-grid" class="grid gap-6 dynamic-grid pb-20"></div>
             </div>
 
-            <!-- FOOTER CONTEXT MENU -->
-            <footer id="contextual-footer" class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 absolute bottom-0 w-full transform translate-y-full transition-transform duration-300 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-30 flex flex-col md:flex-row justify-between items-center gap-4">
+            <!-- FOOTER CONTEXT MENU (Always Visible now) -->
+            <footer id="contextual-footer" class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 absolute bottom-0 w-full shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-30 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="flex items-center gap-3">
                     <button id="selectAllBtn" class="text-sm font-medium text-slate-500 hover:text-indigo-600">Select All</button>
                     <span class="text-slate-300">|</span>
-                    <button id="deselectAllBtn" class="text-sm font-medium text-slate-500 hover:text-slate-800">None</button>
-                    <span id="selection-count" class="ml-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full"></span>
+                    <button id="deselectAllBtn" class="text-sm font-medium text-slate-500 hover:text-slate-800">Deselect</button>
+                    <span id="selection-count" class="ml-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full">0 selected</span>
                 </div>
                 
                 <div class="flex items-center gap-2">
-                    <button id="duplicateSelectedBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded" title="Duplicate">
+                    <button id="duplicateSelectedBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded disabled:opacity-30" title="Duplicate">
                         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
-                    <button id="rotateSelectedBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded" title="Rotate 90°">
+                    <button id="rotateSelectedBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded disabled:opacity-30" title="Rotate 90°">
                          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/></svg>
                     </button>
-                    <button id="deleteSelectedBtn" class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded" title="Delete">
+                    <button id="deleteSelectedBtn" class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded disabled:opacity-30" title="Delete">
                         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                     
@@ -195,9 +200,9 @@
         </main>
     </div>
 
-    <!-- ADD TEXT MODAL WITH LIVE PREVIEW -->
+    <!-- ADD TEXT MODAL WITH ACTUAL PAGE PREVIEW -->
     <div id="text-modal" class="fixed inset-0 z-[60] bg-black/60 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-4xl h-[600px] rounded-xl shadow-2xl overflow-hidden transform transition-all flex flex-col">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-5xl h-[80vh] rounded-xl shadow-2xl overflow-hidden transform transition-all flex flex-col">
             <div class="bg-indigo-600 p-4 flex justify-between items-center shrink-0">
                 <h3 class="text-white font-bold text-lg">Add Text, Headers & Footers</h3>
                 <button class="close-text-modal text-white/80 hover:text-white text-2xl">✕</button>
@@ -210,22 +215,9 @@
                         <div>
                             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Text Content</label>
                             <textarea id="txt-content" placeholder="Type here..." class="w-full h-24 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></textarea>
-                            <p class="text-xs text-slate-500 mt-1">This will be stamped on your pages.</p>
+                            <p class="text-xs text-slate-500 mt-1">Drag the text on the preview to position it.</p>
                         </div>
                         
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Position & Alignment</label>
-                            <div class="grid grid-cols-3 gap-2 mb-2">
-                                <button data-pos="top-left" class="pos-btn p-2 border rounded hover:bg-indigo-50 dark:hover:bg-slate-600 text-xs">Top Left</button>
-                                <button data-pos="top-center" class="pos-btn p-2 border rounded bg-indigo-100 border-indigo-500 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200 text-xs">Top Mid</button>
-                                <button data-pos="top-right" class="pos-btn p-2 border rounded hover:bg-indigo-50 dark:hover:bg-slate-600 text-xs">Top Right</button>
-                                <button data-pos="bottom-left" class="pos-btn p-2 border rounded hover:bg-indigo-50 dark:hover:bg-slate-600 text-xs">Bot Left</button>
-                                <button data-pos="bottom-center" class="pos-btn p-2 border rounded hover:bg-indigo-50 dark:hover:bg-slate-600 text-xs">Bot Mid</button>
-                                <button data-pos="bottom-right" class="pos-btn p-2 border rounded hover:bg-indigo-50 dark:hover:bg-slate-600 text-xs">Bot Right</button>
-                            </div>
-                            <input type="hidden" id="txt-position" value="top-center">
-                        </div>
-
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Font Size</label>
@@ -239,6 +231,16 @@
                             </div>
                         </div>
 
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Rotation (<span id="rot-val">0</span>°)</label>
+                            <input type="range" id="txt-rotation" min="-90" max="90" step="1" value="0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+
+                         <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Opacity (<span id="opacity-val">100</span>%)</label>
+                            <input type="range" id="txt-opacity" min="0.1" max="1" step="0.1" value="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+
                         <div class="pt-4 flex flex-col gap-3">
                             <button id="applyTextSelected" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded transition shadow">
                                 Apply to Selected Pages
@@ -250,27 +252,19 @@
                     </div>
                 </div>
 
-                <!-- Right: Live Preview -->
-                <div class="w-2/3 bg-slate-200 dark:bg-slate-900 flex flex-col items-center justify-center p-8 bg-pattern relative">
-                    <div class="absolute top-4 left-4 bg-white/80 dark:bg-slate-800/80 px-3 py-1 rounded text-xs font-bold text-slate-500">LIVE PREVIEW</div>
-                    
-                    <!-- Mock Page -->
-                    <div id="preview-page-box" class="w-[300px] h-[424px] bg-white shadow-2xl relative transition-all duration-200 transform scale-100 border border-slate-300">
-                        <!-- Mock Text Overlay -->
-                        <div id="preview-text-layer" class="absolute p-2 whitespace-pre-wrap break-words transition-all duration-200 font-sans leading-tight pointer-events-none border border-dashed border-indigo-300 bg-indigo-50/30">
+                <!-- Right: Draggable Preview on Actual Page -->
+                <div class="w-2/3 bg-slate-200 dark:bg-slate-900 flex flex-col items-center justify-center p-8 bg-pattern relative overflow-hidden">
+                    <div id="preview-wrapper" class="relative shadow-2xl border border-slate-300">
+                        <!-- Background Canvas -->
+                        <canvas id="modal-bg-canvas" class="block"></canvas>
+                        <!-- Draggable Overlay -->
+                        <div id="preview-text-layer" class="absolute cursor-move select-none whitespace-pre border border-dashed border-indigo-400 bg-indigo-50/40 p-1 leading-none origin-center" style="top: 10%; left: 10%;">
                             Type here...
                         </div>
-                        
-                        <!-- Page lines for visual effect -->
-                        <div class="absolute inset-0 p-8 flex flex-col gap-4 opacity-10 pointer-events-none">
-                            <div class="h-2 bg-slate-800 w-3/4 rounded"></div>
-                            <div class="h-2 bg-slate-800 w-full rounded"></div>
-                            <div class="h-2 bg-slate-800 w-full rounded"></div>
-                            <div class="h-2 bg-slate-800 w-5/6 rounded"></div>
-                            <div class="h-2 bg-slate-800 w-full rounded mt-4"></div>
-                        </div>
                     </div>
-                    <p class="text-slate-500 text-xs mt-4">Preview represents an A4 page layout.</p>
+                    <!-- Hidden input to store positions (0-100%) -->
+                    <input type="hidden" id="txt-x-percent" value="10">
+                    <input type="hidden" id="txt-y-percent" value="10">
                 </div>
             </div>
         </div>
