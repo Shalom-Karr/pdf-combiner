@@ -1,6 +1,77 @@
 // Point to the LOCAL worker file
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
 
+/**
+ * INDEXED DB MANAGER
+ * Handles saving/loading large binary files locally
+ */
+class LocalStorageManager {
+    constructor(dbName = 'PDFEditorDB', storeName = 'StateStore') {
+        this.dbName = dbName;
+        this.storeName = storeName;
+        this.db = null;
+    }
+
+    async init() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, 1);
+            request.onerror = e => reject(e);
+            request.onupgradeneeded = e => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(this.storeName)) {
+                    db.createObjectStore(this.storeName);
+                }
+            };
+            request.onsuccess = e => {
+                this.db = e.target.result;
+                resolve();
+            };
+        });
+    }
+
+    async saveState(sourceFiles, pages) {
+        if (!this.db) await this.init();
+        
+        // Prepare data for storage (convert files to simple objects + blobs)
+        const serializedSources = sourceFiles.map(f => ({
+            id: f.id,
+            name: f.name,
+            type: f.type,
+            file: f.file // Blob is supported in IndexedDB
+        }));
+
+        const state = { sourceFiles: serializedSources, pages: pages };
+        
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction([this.storeName], 'readwrite');
+            const store = tx.objectStore(this.storeName);
+            store.put(state, 'currentState');
+            tx.oncomplete = () => resolve();
+            tx.onerror = e => reject(e);
+        });
+    }
+
+    async loadState() {
+        if (!this.db) await this.init();
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction([this.storeName], 'readonly');
+            const store = tx.objectStore(this.storeName);
+            const req = store.get('currentState');
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = e => reject(e);
+        });
+    }
+    
+    async clear() {
+        if (!this.db) await this.init();
+        const tx = this.db.transaction([this.storeName], 'readwrite');
+        tx.objectStore(this.storeName).clear();
+    }
+}
+
+/**
+ * MAIN APP
+ */
 class VisualPDFTool {
     constructor() {
         this.sourceFiles = [];
@@ -9,6 +80,10 @@ class VisualPDFTool {
         this.historyStack = [];
         this.redoStack = [];
         this.maxHistory = 20;
+        this.observer = null; // Lazy load observer
+        this.contextTargetId = null;
+
+        this.dbManager = new LocalStorageManager();
 
         // UI Refs
         this.pageGrid = document.getElementById('page-grid');
@@ -19,15 +94,107 @@ class VisualPDFTool {
         this.textModal = document.getElementById('text-modal');
         this.startScreen = document.getElementById('start-screen');
         this.appContainer = document.querySelector('.app-container');
+        this.contextMenu = document.getElementById('context-menu');
 
         this.init();
     }
 
-    init() {
+    async init() {
         this.initSortable();
         this.initEventListeners();
+        this.initIntersectionObserver();
+        this.initContextMenu();
         this.checkTheme();
         document.documentElement.style.setProperty('--grid-size', '180px');
+        
+        // Check for saved work
+        try {
+            await this.dbManager.init();
+            const saved = await this.dbManager.loadState();
+            if(saved && saved.pages.length > 0) {
+                const banner = document.getElementById('restore-banner');
+                banner.classList.remove('hidden');
+                document.getElementById('restoreBtn').addEventListener('click', () => this.restoreSession(saved));
+            }
+        } catch(e) { console.log("DB Error", e); }
+    }
+
+    // --- LAZY LOADING ---
+    initIntersectionObserver() {
+        const options = { root: this.pageGrid.parentElement, rootMargin: '300px', threshold: 0 };
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const item = entry.target;
+                    this.observer.unobserve(item);
+                    const pageId = item.dataset.id;
+                    const pageData = this.pages.find(p => p.id === pageId);
+                    if(pageData) this.actuallyDrawCanvas(item, pageData);
+                }
+            });
+        }, options);
+    }
+
+    // --- CONTEXT MENU ---
+    initContextMenu() {
+        document.addEventListener('click', () => this.contextMenu.classList.add('hidden'));
+        this.pageGrid.addEventListener('contextmenu', (e) => {
+            const item = e.target.closest('.page-item');
+            if (!item) return;
+            e.preventDefault();
+            this.contextTargetId = item.dataset.id;
+            // Adjust position if close to edge
+            let x = e.clientX; let y = e.clientY;
+            if(x + 200 > window.innerWidth) x = window.innerWidth - 210;
+            if(y + 200 > window.innerHeight) y = window.innerHeight - 210;
+            this.contextMenu.style.left = `${x}px`;
+            this.contextMenu.style.top = `${y}px`;
+            this.contextMenu.classList.remove('hidden');
+        });
+
+        document.getElementById('ctx-delete').addEventListener('click', () => { if(this.contextTargetId) this.deletePages([this.contextTargetId]); });
+        document.getElementById('ctx-duplicate').addEventListener('click', () => { 
+            if(this.contextTargetId) {
+                this.selectedPageIds.clear(); this.selectedPageIds.add(this.contextTargetId);
+                this.duplicateSelected();
+            }
+        });
+        document.getElementById('ctx-rotate-cw').addEventListener('click', () => { if(this.contextTargetId) this.rotatePages([this.contextTargetId], 90); });
+        document.getElementById('ctx-rotate-ccw').addEventListener('click', () => { if(this.contextTargetId) this.rotatePages([this.contextTargetId], -90); });
+    }
+
+    // --- SESSION RESTORE ---
+    async restoreSession(saved) {
+        this.showLoader(true, 'Restoring Session...');
+        // Restore source files
+        this.sourceFiles = [];
+        for (const f of saved.sourceFiles) {
+            const source = { id: f.id, name: f.name, type: f.type, file: f.file };
+            if(f.type === 'application/pdf') {
+                const ab = await f.file.arrayBuffer();
+                source.pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise;
+                source.pdfLibDoc = await PDFLib.PDFDocument.load(ab);
+            }
+            this.sourceFiles.push(source);
+        }
+        
+        // Restore pages
+        this.pages = [];
+        saved.pages.forEach(p => {
+            const source = this.sourceFiles.find(s => s.id === p.sourceFileId);
+            if(source) {
+                this.pages.push({
+                    id: p.id, sourceFile: source, sourcePageIndex: p.sourcePageIndex,
+                    type: p.type, rotation: p.rotation, textOverlays: p.textOverlays
+                });
+            }
+        });
+        
+        this.startScreen.classList.add('hidden');
+        this.appContainer.classList.remove('hidden');
+        this.renderAllPages();
+        this.updateStatus();
+        this.showLoader(false);
     }
 
     // --- HISTORY ---
@@ -44,17 +211,19 @@ class VisualPDFTool {
         if (this.historyStack.length > this.maxHistory) this.historyStack.shift();
         this.redoStack = [];
         this.updateHistoryButtons();
+        
+        // Auto-Save to DB
+        this.dbManager.saveState(this.sourceFiles, stateSnapshot);
     }
 
     restoreState(stateSnapshot) {
         const newPages = [];
         for (const item of stateSnapshot) {
-            // CRITICAL: Re-link to the actual File object using the ID
             const sourceFile = this.sourceFiles.find(f => f.id === item.sourceFileId);
             if (sourceFile) {
                 newPages.push({
                     id: item.id,
-                    sourceFile: sourceFile, // This restores the file object reference
+                    sourceFile: sourceFile, 
                     sourcePageIndex: item.sourcePageIndex,
                     type: item.type,
                     rotation: item.rotation,
@@ -66,6 +235,9 @@ class VisualPDFTool {
         this.selectedPageIds.clear();
         this.renderAllPages(); 
         this.updateStatus();
+        
+        // Sync DB
+        this.dbManager.saveState(this.sourceFiles, stateSnapshot);
     }
 
     performUndo() {
@@ -100,7 +272,6 @@ class VisualPDFTool {
     }
 
     initEventListeners() {
-        // Global
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); this.performUndo(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); this.performRedo(); }
@@ -108,12 +279,11 @@ class VisualPDFTool {
         });
         window.addEventListener('beforeunload', (e) => { if (this.pages.length > 0) { e.preventDefault(); e.returnValue = ''; } });
         
-        // Buttons
         this.undoBtn.addEventListener('click', () => this.performUndo());
         this.redoBtn.addEventListener('click', () => this.performRedo());
         document.getElementById('zoomSlider').addEventListener('input', (e) => document.documentElement.style.setProperty('--grid-size', `${e.target.value}px`));
         document.getElementById('darkModeToggle').addEventListener('click', () => document.documentElement.classList.toggle('dark'));
-        document.getElementById('helpBtn').addEventListener('click', () => alert("⌨️ Shortcuts:\n• Ctrl/Shift + Click: Select\n• Drag: Reorder\n• Delete: Remove"));
+        document.getElementById('helpBtn').addEventListener('click', () => alert("⌨️ Shortcuts:\n• Ctrl/Shift + Click: Select\n• Drag: Reorder\n• Delete: Remove\n• Right Click: Menu"));
 
         // Files
         document.getElementById('filenameInput').addEventListener('input', (e) => e.target.value = e.target.value.replace(/[^a-zA-Z0-9-_ ]/g, ''));
@@ -121,7 +291,9 @@ class VisualPDFTool {
         document.getElementById('addFilesBtn').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileSelect(e));
         
-        // Tools
+        // Sidebar
+        document.getElementById('sidebar-close-btn').addEventListener('click', () => this.toggleSidebar(false));
+        document.getElementById('menu-toggle-btn').addEventListener('click', () => this.toggleSidebar(true));
         document.getElementById('selectRangeBtn').addEventListener('click', () => this.selectByRange());
         document.getElementById('insertBlankBtn').addEventListener('click', () => this.insertBlankPage());
         
@@ -130,8 +302,31 @@ class VisualPDFTool {
         document.querySelector('.close-text-modal').addEventListener('click', () => this.textModal.classList.add('hidden'));
         
         // Text Controls
-        ['txt-content', 'txt-size', 'txt-color', 'txt-opacity', 'txt-rotation'].forEach(id => {
+        ['txt-content', 'txt-size', 'txt-color', 'txt-opacity', 'txt-rotation', 'txt-font'].forEach(id => {
             document.getElementById(id).addEventListener('input', () => this.updateTextPreviewLayer());
+        });
+        
+        // Position Buttons (Clean UI + Updates Logic)
+        document.querySelectorAll('.pos-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.pos-btn').forEach(b => {
+                    b.classList.remove('bg-indigo-100', 'border-indigo-500', 'text-indigo-700', 'dark:bg-indigo-900', 'dark:text-indigo-200');
+                    b.classList.add('hover:bg-indigo-50', 'dark:hover:bg-slate-600');
+                });
+                e.target.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700', 'dark:bg-indigo-900', 'dark:text-indigo-200');
+                e.target.classList.remove('hover:bg-indigo-50', 'dark:hover:bg-slate-600');
+                
+                const pos = e.target.dataset.pos;
+                // Update internal percent values based on preset
+                if(pos === 'top-left') { this.setPos(10, 10); }
+                else if(pos === 'top-center') { this.setPos(50, 10); }
+                else if(pos === 'top-right') { this.setPos(90, 10); }
+                else if(pos === 'bottom-left') { this.setPos(10, 90); }
+                else if(pos === 'bottom-center') { this.setPos(50, 90); }
+                else if(pos === 'bottom-right') { this.setPos(90, 90); }
+                
+                this.updateTextPreviewLayer();
+            });
         });
         
         // Apply Buttons
@@ -153,8 +348,6 @@ class VisualPDFTool {
         document.getElementById('previewBtn').addEventListener('click', (e) => { e.preventDefault(); this.createPdf(true); });
         
         // Toggles
-        document.getElementById('sidebar-close-btn').addEventListener('click', () => { document.getElementById('sidebar').classList.add('-translate-x-full'); document.getElementById('sidebar-overlay').classList.add('hidden'); });
-        document.getElementById('menu-toggle-btn').addEventListener('click', () => { document.getElementById('sidebar').classList.remove('-translate-x-full'); document.getElementById('sidebar-overlay').classList.remove('hidden'); });
         document.getElementById('exportDropdownToggle').addEventListener('click', () => document.getElementById('exportDropdownMenu').classList.toggle('hidden'));
         document.addEventListener('click', (e) => {
             if (!document.getElementById('exportDropdownToggle').contains(e.target)) document.getElementById('exportDropdownMenu').classList.add('hidden');
@@ -175,6 +368,11 @@ class VisualPDFTool {
             zone.addEventListener('dragleave', (e) => { e.preventDefault(); zone.classList.remove('dragover'); });
             zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); });
         });
+    }
+    
+    setPos(x, y) {
+        document.getElementById('txt-x-percent').value = x;
+        document.getElementById('txt-y-percent').value = y;
     }
 
     // --- LOGIC ---
@@ -239,29 +437,27 @@ class VisualPDFTool {
         if(this.pages.length === 0) { alert("Add a page first."); return; }
         this.textModal.classList.remove('hidden');
         
-        // Determine context page (Selected one, or first one)
+        // Determine context page
         let contextPage = this.pages[0];
         if(this.selectedPageIds.size > 0) {
             const firstId = this.selectedPageIds.values().next().value;
             contextPage = this.pages.find(p => p.id === firstId);
         }
 
-        // Render this page to the background canvas
+        // Render page background
         const canvas = document.getElementById('modal-bg-canvas');
         const ctx = canvas.getContext('2d');
-        const containerHeight = 450; // Max height for canvas in layout
+        const containerHeight = 600; 
         
         if (contextPage.type === 'blank') {
-            canvas.width = 300; canvas.height = 420;
-            ctx.fillStyle = 'white'; ctx.fillRect(0,0,300,420);
-            ctx.strokeStyle = '#ccc'; ctx.strokeRect(0,0,300,420);
+            canvas.width = 420; canvas.height = 600;
+            ctx.fillStyle = 'white'; ctx.fillRect(0,0,420,600); ctx.strokeStyle = '#ccc'; ctx.strokeRect(0,0,420,600);
         } else if (contextPage.type === 'image') {
             const img = new Image();
             img.src = URL.createObjectURL(contextPage.sourceFile.file);
             img.onload = () => {
                 const ratio = img.height / img.width;
-                canvas.height = containerHeight;
-                canvas.width = containerHeight / ratio;
+                canvas.height = containerHeight; canvas.width = containerHeight / ratio;
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             };
         } else {
@@ -269,13 +465,12 @@ class VisualPDFTool {
             const viewport = page.getViewport({ scale: 1 });
             const scale = containerHeight / viewport.height;
             const scaledViewport = page.getViewport({ scale });
-            canvas.height = scaledViewport.height;
-            canvas.width = scaledViewport.width;
+            canvas.height = scaledViewport.height; canvas.width = scaledViewport.width;
             await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
         }
 
-        // Reset Text Position to default (10%, 10%)
-        document.getElementById('txt-x-percent').value = 10;
+        // Default to center if not set
+        document.getElementById('txt-x-percent').value = 50;
         document.getElementById('txt-y-percent').value = 10;
         this.updateTextPreviewLayer();
     }
@@ -291,22 +486,18 @@ class VisualPDFTool {
         container.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
             const rect = container.getBoundingClientRect();
-            let x = e.clientX - rect.left - (textLayer.offsetWidth / 2);
-            let y = e.clientY - rect.top - (textLayer.offsetHeight / 2);
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
             
-            // Boundary checks
-            x = Math.max(0, Math.min(x, rect.width - textLayer.offsetWidth));
-            y = Math.max(0, Math.min(y, rect.height - textLayer.offsetHeight));
+            x = Math.max(0, Math.min(x, rect.width));
+            y = Math.max(0, Math.min(y, rect.height));
 
-            // Convert to %
             const xPercent = (x / rect.width) * 100;
             const yPercent = (y / rect.height) * 100;
 
             document.getElementById('txt-x-percent').value = xPercent;
             document.getElementById('txt-y-percent').value = yPercent;
-            
-            textLayer.style.left = `${xPercent}%`;
-            textLayer.style.top = `${yPercent}%`;
+            this.updateTextPreviewLayer();
         });
     }
 
@@ -316,6 +507,7 @@ class VisualPDFTool {
         const color = document.getElementById('txt-color').value;
         const opacity = document.getElementById('txt-opacity').value;
         const rotation = document.getElementById('txt-rotation').value;
+        const font = document.getElementById('txt-font').value;
         const xP = document.getElementById('txt-x-percent').value;
         const yP = document.getElementById('txt-y-percent').value;
         
@@ -324,7 +516,14 @@ class VisualPDFTool {
         preview.style.fontSize = `${size}px`;
         preview.style.color = color;
         preview.style.opacity = opacity;
-        preview.style.transform = `rotate(${rotation}deg)`;
+        
+        // Font
+        if(font === 'TimesRoman') preview.style.fontFamily = '"Times New Roman", serif';
+        else if(font === 'Courier') preview.style.fontFamily = '"Courier New", monospace';
+        else preview.style.fontFamily = 'Helvetica, Arial, sans-serif';
+        
+        // Transform: Center the text point
+        preview.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
         preview.style.left = `${xP}%`;
         preview.style.top = `${yP}%`;
     }
@@ -337,6 +536,7 @@ class VisualPDFTool {
         const color = document.getElementById('txt-color').value;
         const opacity = parseFloat(document.getElementById('txt-opacity').value);
         const rotation = parseInt(document.getElementById('txt-rotation').value);
+        const font = document.getElementById('txt-font').value;
         const xPercent = parseFloat(document.getElementById('txt-x-percent').value);
         const yPercent = parseFloat(document.getElementById('txt-y-percent').value);
 
@@ -346,9 +546,8 @@ class VisualPDFTool {
 
         targets.forEach(page => {
             if (!page.textOverlays) page.textOverlays = [];
-            page.textOverlays.push({ text, xPercent, yPercent, size, color, opacity, rotation });
+            page.textOverlays.push({ text, xPercent, yPercent, size, color, opacity, rotation, font });
             
-            // Badge update
             const el = this.pageGrid.querySelector(`.page-item[data-id="${page.id}"]`);
             if(el && !el.querySelector('.text-badge')) {
                 const badge = document.createElement('div');
@@ -389,8 +588,11 @@ class VisualPDFTool {
             </div>
             ${badgeHtml}
             <div class="flex-1 bg-slate-100 dark:bg-slate-800/50 relative overflow-hidden flex items-center justify-center p-4">
-                <div class="relative shadow-md bg-white">
+                <div class="relative shadow-md bg-white min-w-[100px] min-h-[140px] flex items-center justify-center">
                     <canvas class="page-canvas max-w-full max-h-[240px] object-contain block"></canvas>
+                    <div class="loading-indicator text-slate-300">
+                        <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </div>
                 </div>
             </div>
             <div class="px-3 py-2 bg-white dark:bg-slate-700 border-t border-slate-100 dark:border-slate-600 text-xs flex justify-between items-center h-11">
@@ -410,7 +612,15 @@ class VisualPDFTool {
         item.querySelector('input[type="number"]').addEventListener('click', e => e.stopPropagation());
         this.pageGrid.appendChild(item);
         
+        // Lazy Load this item
+        this.observer.observe(item);
+    }
+    
+    // Actually draw the canvas when visible
+    async actuallyDrawCanvas(item, pageData) {
         const canvas = item.querySelector('canvas');
+        const loader = item.querySelector('.loading-indicator');
+        
         if (pageData.type === 'blank') {
             canvas.width = 200; canvas.height = 280;
             const ctx = canvas.getContext('2d');
@@ -435,6 +645,7 @@ class VisualPDFTool {
                 await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
             } catch(e) {}
         }
+        if(loader) loader.remove();
     }
 
     // --- INTERACTIONS ---
@@ -490,10 +701,6 @@ class VisualPDFTool {
         });
         const count = this.selectedPageIds.size;
         this.selectionCount.innerText = `${count} selected`;
-        // Keep buttons visible but maybe disabled state styling
-        ['deleteSelectedBtn', 'rotateSelectedBtn', 'duplicateSelectedBtn'].forEach(id => {
-            document.getElementById(id).disabled = count === 0;
-        });
     }
 
     // --- ACTIONS ---
@@ -512,7 +719,6 @@ class VisualPDFTool {
         this.pages.forEach(page => {
             newPages.push(page);
             if (this.selectedPageIds.has(page.id)) {
-                // Manual copy to avoid circular JSON error
                 newPages.push({
                     id: `page_${Date.now()}_dup_${Math.random().toString(36).substr(2,9)}`,
                     sourceFile: page.sourceFile,
@@ -582,17 +788,18 @@ class VisualPDFTool {
         document.getElementById('clearBtn').disabled = this.pages.length === 0;
         if(this.pages.length === 0) this.clearWorkspace();
     }
-    clearWorkspace() {
+    async clearWorkspace() {
         this.saveState();
         this.pages = []; this.sourceFiles = []; this.selectedPageIds.clear();
         this.renderAllPages();
         this.startScreen.classList.remove('hidden'); this.appContainer.classList.add('hidden');
+        await this.dbManager.clear();
     }
     showLoader(show, text='Processing...') {
         document.getElementById('loader').classList.toggle('hidden', !show);
         document.getElementById('loader-text').innerText = text;
     }
-    checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) this.toggleDarkMode(); }
+    checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark'); }
     hexToRgb(hex) {
         const r = parseInt(hex.substr(1, 2), 16) / 255;
         const g = parseInt(hex.substr(3, 2), 16) / 255;
@@ -608,7 +815,6 @@ class VisualPDFTool {
         const ctx = canvas.getContext('2d');
         const container = document.querySelector('.modal-body');
         document.getElementById('preview-meta').innerText = `${page.sourceFile.name} - Page ${page.sourcePageIndex + 1}`;
-        // Reuse render logic
         if(page.type === 'blank') {
             canvas.width = 400; canvas.height = 560;
             ctx.fillStyle = 'white'; ctx.fillRect(0,0,400,560); ctx.strokeRect(0,0,400,560);
@@ -636,7 +842,11 @@ class VisualPDFTool {
         
         try {
             const newDoc = await PDFLib.PDFDocument.create();
-            const helveticaFont = await newDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+            const fontMap = {
+                'Helvetica': await newDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+                'TimesRoman': await newDoc.embedFont(PDFLib.StandardFonts.TimesRoman),
+                'Courier': await newDoc.embedFont(PDFLib.StandardFonts.Courier)
+            };
             
             for(const p of this.pages) {
                 let page;
@@ -661,7 +871,6 @@ class VisualPDFTool {
                     page.drawImage(embedded, drawOpts);
                 } 
                 else {
-                    // Safe Copy
                     const [copied] = await newDoc.copyPages(p.sourceFile.pdfLibDoc, [p.sourcePageIndex]);
                     copied.setRotation(PDFLib.degrees((copied.getRotation().angle + p.rotation) % 360));
                     page = newDoc.addPage(copied);
@@ -671,20 +880,25 @@ class VisualPDFTool {
                     const { width, height } = page.getSize();
                     p.textOverlays.forEach(txt => {
                         const rgb = this.hexToRgb(txt.color);
-                        
-                        // Calculate position based on percentages
+                        // Calculate PDF coords (Top-left origin mapping)
                         const x = width * (txt.xPercent / 100);
-                        // PDF coordinate Y is from bottom, DOM is from top
                         const y = height - (height * (txt.yPercent / 100));
 
+                        const fontToUse = fontMap[txt.font] || fontMap['Helvetica'];
+                        
+                        // drawText in pdf-lib draws from bottom-left by default, but we centered our preview logic.
+                        // We need to approximate centering based on font size.
                         page.drawText(txt.text, {
                             x: x,
                             y: y,
                             size: txt.size,
-                            font: helveticaFont,
+                            font: fontToUse,
                             color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
                             opacity: txt.opacity || 1,
-                            rotate: PDFLib.degrees(txt.rotation || 0)
+                            rotate: PDFLib.degrees(txt.rotation || 0),
+                            // Basic center origin approximation
+                             xCentered: true,
+                             yCentered: true
                         });
                     });
                 }
