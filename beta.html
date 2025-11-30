@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,123 +10,180 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" defer></script>
     
+    <!-- TAILWIND CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { primary: '#4f46e5', secondary: '#64748b' }
+                }
+            }
+        }
+    </script>
+    
     <!-- FONTS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Custom utilities that Tailwind doesn't handle easily for dynamic content */
+        body { font-family: 'Inter', sans-serif; }
+        .page-canvas { pointer-events: none; }
+        /* Sortable Ghost State */
+        .sortable-ghost { opacity: 0.5; background: #e2e8f0; }
+        /* Loader Animation */
+        .loader-spinner { border-top-color: #4f46e5; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Grid Column Width Variable controlled by JS */
+        :root { --grid-size: 180px; }
+        .dynamic-grid { grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); }
+    </style>
 </head>
-<body>
-    <div id="sidebar-overlay" class="hidden"></div>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 h-full overflow-hidden transition-colors duration-200">
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity"></div>
     
     <!-- START SCREEN -->
-    <div id="start-screen">
-        <div class="start-container">
-            <div class="start-header">
-                <h1>Visual PDF Editor</h1>
-                <p>Combine, reorder, and edit pages from PDFs and images.</p>
+    <div id="start-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
+        <div class="w-full max-w-3xl bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden">
+            <div class="bg-slate-800 p-8 text-center text-white">
+                <h1 class="text-3xl font-bold mb-2">Visual PDF Editor</h1>
+                <p class="opacity-90">Combine, reorder, edit, and add text to your PDFs.</p>
             </div>
-            <div class="start-drop-zone" id="startDropZone">
-                <div class="start-drop-zone-text">
-                    Drag and drop PDF files and images here
-                </div>
-                <button class="start-file-btn" id="startChooseFileBtn">Choose Files</button>
+            <div id="startDropZone" class="m-8 border-4 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-12 text-center bg-slate-50 dark:bg-slate-700/50 transition-colors hover:bg-indigo-50 dark:hover:bg-slate-700 cursor-pointer">
+                <p class="text-slate-500 dark:text-slate-400 text-lg mb-6">Drag and drop files here</p>
+                <button id="startChooseFileBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-lg shadow transition transform hover:scale-105">
+                    Choose Files
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- MAIN EDITOR -->
-    <div class="app-container hidden">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h2>Source Files</h2>
-                <button class="btn-icon btn-secondary-outline" id="sidebar-close-btn" title="Close menu">✕</button>
-            </div>
-            <div id="sourceFileList" class="sidebar-content">
-                <p class="placeholder">Add files to begin.</p>
+    <!-- MAIN EDITOR LAYOUT -->
+    <div class="app-container hidden flex h-screen">
+        
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col flex-shrink-0 z-50 fixed md:relative h-full transition-transform transform -translate-x-full md:translate-x-0">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <h2 class="font-bold text-lg">Source Files</h2>
+                <button id="sidebar-close-btn" class="md:hidden text-slate-500 hover:text-slate-800 dark:hover:text-white">✕</button>
             </div>
             
-            <!-- New Sidebar Tools -->
-            <div class="sidebar-tools">
-                <h3>Quick Tools</h3>
-                <div class="range-selector">
-                    <label for="rangeInput">Select Range (e.g., 1-5, 8)</label>
-                    <div class="input-group">
-                        <input type="text" id="rangeInput" placeholder="1-3, 5">
-                        <button class="btn-sm btn-secondary" id="selectRangeBtn">Go</button>
+            <div id="sourceFileList" class="flex-1 overflow-y-auto p-4 space-y-2">
+                <p class="text-sm text-slate-400 italic">Add files to begin.</p>
+            </div>
+            
+            <!-- Sidebar Tools -->
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-4">
+                <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Tools</h3>
+                
+                <!-- Range Selector -->
+                <div>
+                    <label class="block text-xs text-slate-500 mb-1">Select Range (e.g. 1-3, 5)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="rangeInput" class="flex-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button id="selectRangeBtn" class="bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 px-3 py-1 rounded text-sm font-medium">Go</button>
                     </div>
                 </div>
-                <button class="btn-full btn-secondary" id="insertBlankBtn">+ Insert Blank Page</button>
+
+                <button id="insertBlankBtn" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium flex items-center justify-center gap-2 transition">
+                    <span>+</span> Insert Blank Page
+                </button>
+                
+                <button id="openTextModalBtn" class="w-full py-2 px-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm font-medium flex items-center justify-center gap-2 transition">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg> 
+                    Add Text / Header
+                </button>
             </div>
         </aside>
 
-        <main class="main-view" id="main-view">
-            <header class="main-header">
-                <div class="header-left">
-                    <button class="btn btn-icon btn-secondary-outline" id="menu-toggle-btn">☰</button>
-                    <h1 class="main-title">Workspace</h1>
-                </div>
-
-                <!-- NEW TOOLBAR -->
-                <div class="toolbar">
-                    <div class="tool-group">
-                        <button class="btn-icon btn-secondary" id="undoBtn" title="Undo (Ctrl+Z)" disabled>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
-                        </button>
-                        <button class="btn-icon btn-secondary" id="redoBtn" title="Redo (Ctrl+Y)" disabled>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path></svg>
+        <!-- MAIN VIEW -->
+        <main id="main-view" class="flex-1 flex flex-col min-w-0 bg-slate-100 dark:bg-slate-900/50 relative">
+            
+            <!-- HEADER -->
+            <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex flex-col shadow-sm z-20">
+                <div class="flex items-center justify-between px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <button id="menu-toggle-btn" class="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded">☰</button>
+                        <h1 class="font-bold text-xl">Workspace</h1>
+                        <button id="helpBtn" class="ml-2 text-slate-400 hover:text-indigo-500" title="Shortcuts">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                         </button>
                     </div>
-                    
-                    <div class="divider"></div>
 
-                    <div class="tool-group zoom-control">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                        <input type="range" id="zoomSlider" min="100" max="300" value="160" step="10">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                    <!-- Toolbar Actions -->
+                    <div class="flex items-center gap-2">
+                        <!-- Undo/Redo -->
+                        <div class="flex items-center bg-slate-100 dark:bg-slate-700 rounded-lg p-1 mr-2">
+                            <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                            </button>
+                            <button id="redoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 7v6h-6M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Zoom -->
+                        <div class="hidden sm:flex items-center gap-2 text-slate-400 mr-2">
+                            <svg width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                            <input type="range" id="zoomSlider" min="120" max="300" value="180" step="10" class="w-24 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            <svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                        </div>
+
+                        <button id="darkModeToggle" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition">
+                            <svg class="w-5 h-5 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                            <svg class="w-5 h-5 hidden dark:block text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        </button>
                     </div>
-
-                    <div class="divider"></div>
-
-                    <button class="btn-icon btn-secondary" id="darkModeToggle" title="Toggle Dark Mode">
-                        <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                        <svg class="sun-icon hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                    </button>
                 </div>
 
-                <div class="main-actions">
-                    <button class="btn btn-secondary" id="sortByNumberBtn">Sort</button>
-                    <button class="btn btn-danger-outline" id="clearBtn">Clear</button>
-                    <button class="btn btn-primary" id="addFilesBtn">Add Files</button>
+                <div class="flex flex-wrap items-center justify-end gap-2 px-4 py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                    <button id="sortByNumberBtn" class="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition">Sort by #</button>
+                    <button id="clearBtn" class="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition">Clear All</button>
+                    <button id="addFilesBtn" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded shadow transition">Add Files</button>
                     <input type="file" id="fileInput" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png">
                 </div>
             </header>
 
-            <div class="page-grid-container" id="page-grid-container">
-                <div class="page-grid" id="page-grid">
-                    <!-- Page thumbnails injected here -->
+            <!-- GRID AREA -->
+            <div id="page-grid-container" class="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-slate-900/50">
+                <div id="page-grid" class="grid gap-6 dynamic-grid pb-20">
+                    <!-- Thumbnails Injected Here -->
                 </div>
             </div>
 
-            <footer id="contextual-footer" class="contextual-footer">
-                <div class="selection-info">
-                    <button class="btn btn-secondary-outline" id="selectAllBtn">Select All</button>
-                    <button class="btn btn-secondary-outline" id="deselectAllBtn">None</button>
+            <!-- FOOTER CONTEXT MENU -->
+            <footer id="contextual-footer" class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 absolute bottom-0 w-full transform translate-y-full transition-transform duration-300 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-30 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <button id="selectAllBtn" class="text-sm font-medium text-slate-500 hover:text-indigo-600">Select All</button>
+                    <span class="text-slate-300">|</span>
+                    <button id="deselectAllBtn" class="text-sm font-medium text-slate-500 hover:text-slate-800">None</button>
+                    <span id="selection-count" class="ml-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full"></span>
                 </div>
-                <div class="selection-actions">
-                    <span id="selection-count"></span>
-                    <button class="btn btn-secondary" id="duplicateSelectedBtn" title="Duplicate Selected">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                
+                <div class="flex items-center gap-2">
+                    <button id="duplicateSelectedBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded" title="Duplicate">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>
-                    <button class="btn btn-secondary" id="rotateSelectedBtn">Rotate</button>
-                    <button class="btn btn-danger" id="deleteSelectedBtn">Delete</button>
-                    <div class="export-group">
-                        <button class="btn btn-success" id="saveBtn">Export PDF</button>
-                        <button class="btn btn-success export-dropdown-toggle" id="exportDropdownToggle">▼</button>
-                        <div class="export-dropdown-menu hidden" id="exportDropdownMenu">
-                            <a href="#" id="previewBtn">Preview PDF</a>
-                            <a href="#" id="printBtn">Print</a>
+                    <button id="rotateSelectedBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded" title="Rotate 90°">
+                         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/></svg>
+                    </button>
+                    <button id="deleteSelectedBtn" class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded" title="Delete">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                    
+                    <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-2"></div>
+
+                    <div class="relative group">
+                        <div class="flex">
+                            <button id="saveBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-l-lg transition">Export PDF</button>
+                            <button id="exportDropdownToggle" class="bg-green-700 hover:bg-green-800 text-white px-2 rounded-r-lg border-l border-green-600 transition">▼</button>
+                        </div>
+                        <div id="exportDropdownMenu" class="hidden absolute bottom-full right-0 mb-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                            <a href="#" id="previewBtn" class="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Preview</a>
+                            <a href="#" id="printBtn" class="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Print</a>
                         </div>
                     </div>
                 </div>
@@ -134,27 +191,73 @@
         </main>
     </div>
 
+    <!-- ADD TEXT MODAL -->
+    <div id="text-modal" class="fixed inset-0 z-[60] bg-black/60 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100">
+            <div class="bg-indigo-600 p-4 flex justify-between items-center">
+                <h3 class="text-white font-bold text-lg">Add Text / Header</h3>
+                <button class="close-text-modal text-white/80 hover:text-white">✕</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Text Content</label>
+                    <input type="text" id="txt-content" placeholder="e.g. Confidential, Page 1" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Position</label>
+                        <select id="txt-position" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded px-3 py-2 outline-none">
+                            <option value="top-left">Top Left</option>
+                            <option value="top-center" selected>Top Center (Header)</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-center">Bottom Center (Footer)</option>
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="center">Dead Center</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Size & Color</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="txt-size" value="12" class="w-16 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded px-2 py-2 outline-none">
+                            <input type="color" id="txt-color" value="#000000" class="flex-1 h-10 cursor-pointer rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex gap-3">
+                    <button id="applyTextSelected" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded transition">
+                        Apply to Selected
+                    </button>
+                    <button id="applyTextAll" class="flex-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-medium py-2 rounded transition">
+                        Apply to All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- PREVIEW MODAL -->
-    <div id="preview-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Page Preview</h3>
-                <button class="close-modal-btn">✕</button>
+    <div id="preview-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center">
+        <div class="bg-white dark:bg-slate-900 w-[95%] h-[90%] rounded-lg flex flex-col overflow-hidden shadow-2xl">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+                <h3 class="font-bold text-lg">Page Preview</h3>
+                <button class="close-modal-btn text-2xl text-slate-500 hover:text-slate-800 dark:hover:text-white">✕</button>
             </div>
-            <div class="modal-body">
-                <canvas id="preview-canvas"></canvas>
+            <div class="flex-1 bg-slate-800 flex justify-center items-center overflow-auto p-4 modal-body">
+                <canvas id="preview-canvas" class="shadow-2xl max-w-full"></canvas>
             </div>
-            <div class="modal-footer">
+            <div class="p-3 text-center border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 text-sm">
                 <span id="preview-meta"></span>
             </div>
         </div>
     </div>
 
-    <div id="loader" class="loader-overlay hidden">
-        <div class="loader-content">
-            <div class="spinner"></div>
-            <p id="loader-text">Processing...</p>
-        </div>
+    <!-- LOADER -->
+    <div id="loader" class="fixed inset-0 z-[100] bg-white/90 dark:bg-slate-900/90 flex flex-col items-center justify-center hidden">
+        <div class="w-12 h-12 border-4 border-slate-200 rounded-full loader-spinner mb-4"></div>
+        <p id="loader-text" class="text-slate-600 dark:text-slate-300 font-medium">Processing...</p>
     </div>
     
     <iframe id="printFrame" class="hidden"></iframe>
