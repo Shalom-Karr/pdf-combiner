@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual PDF Editor Pro (Local/Secure)</title>
+    <title>Visual PDF Editor Pro (Secure)</title>
 
-    <!-- LOCAL LIBRARIES (Ensure these exist in your /js folder) -->
-    <script src="js/pdf-lib.min.js"></script>
-    <script src="js/pdf.min.js"></script>
-    <script src="js/sortable.min.js"></script>
-    <script src="js/tailwindcss.js"></script>
+    <!-- LIBRARIES: Currently set to CDN for immediate testing. 
+         FOR HIPAA COMPLIANCE: Download these files to a local 'js/' folder 
+         and update the src attributes. -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
         tailwind.config = {
@@ -17,7 +19,6 @@
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-                    colors: { primary: '#4f46e5', secondary: '#64748b' },
                     animation: { 'shimmer': 'shimmer 1.5s infinite' },
                     keyframes: { shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } } }
                 }
@@ -26,22 +27,23 @@
     </script>
     
     <style>
+        /* CORE UX */
         body { font-family: 'Inter', sans-serif; user-select: none; overscroll-behavior: none; }
         
-        /* Smooth Transitions */
+        /* CARD ANIMATIONS */
         .page-item { transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease; }
-        .page-item:hover { transform: translateY(-4px) scale(1.01); z-index: 10; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+        .page-item:hover { transform: translateY(-4px) scale(1.01); z-index: 10; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
         .page-item.selected { ring: 2px solid #6366f1; transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(99 102 241 / 0.15); }
         
-        /* Dragging Feedback */
+        /* DRAG & DROP */
         .sortable-ghost { opacity: 0.4; background: #e0e7ff; border: 2px dashed #6366f1; }
         .sortable-drag { cursor: grabbing; opacity: 1 !important; background: white; transform: scale(1.05); z-index: 50; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.2); }
         
-        /* Animations */
+        /* FLOATING ISLAND */
         #contextual-footer { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; }
         #contextual-footer.hidden-island { transform: translate(-50%, 200%); opacity: 0; pointer-events: none; }
         
-        /* Utilities */
+        /* UTILITIES */
         .marquee-box { position: absolute; border: 1px solid #6366f1; background-color: rgba(99, 102, 241, 0.1); z-index: 50; pointer-events: none; }
         :root { --grid-size: 180px; }
         .view-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); gap: 1.5rem; }
@@ -50,17 +52,18 @@
         .view-list .canvas-wrapper { width: 60px; height: 100%; margin-right: 1rem; flex-shrink: 0; }
         .view-list .page-info { border: none; flex: 1; text-align: left; }
         
-        /* Skeleton & Scroll */
+        /* SKELETON LOADING */
         .skeleton-shimmer { background: #f1f5f9; position: relative; overflow: hidden; }
         .skeleton-shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: shimmer 1.5s infinite; }
         .dark .skeleton-shimmer { background: #334155; }
         .dark .skeleton-shimmer::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); }
+        
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
 
-        /* Editor Overlay */
-        .draggable-text { position: absolute; cursor: move; user-select: none; white-space: pre; border: 1px dashed transparent; padding: 2px; }
+        /* EDITOR OVERLAY */
+        .draggable-text { position: absolute; cursor: move; user-select: none; white-space: pre; border: 1px dashed transparent; padding: 4px; line-height: 1; }
         .draggable-text:hover, .draggable-text.active { border-color: #6366f1; background: rgba(99, 102, 241, 0.1); }
     </style>
 </head>
@@ -69,10 +72,10 @@
     <!-- TOAST NOTIFICATIONS -->
     <div id="toast-container" class="fixed bottom-6 right-6 flex flex-col gap-3 z-[100]"></div>
 
-    <!-- SIDEBAR OVERLAY (Mobile) -->
+    <!-- MOBILE SIDEBAR OVERLAY -->
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity"></div>
     
-    <!-- RIGHT CLICK CONTEXT MENU -->
+    <!-- CONTEXT MENU -->
     <div id="context-menu" class="hidden fixed z-50 bg-white dark:bg-slate-800 shadow-xl rounded-lg border border-slate-200 dark:border-slate-700 w-52 py-1 transform scale-100 origin-top-left">
         <button id="ctx-edit" class="w-full text-left px-4 py-2.5 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-3"><span>✎</span> Edit Page</button>
         <div class="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
@@ -92,7 +95,7 @@
                     HIPAA Ready: 100% Local
                 </div>
                 <h1 class="text-4xl font-bold mb-4 tracking-tight">Visual PDF Editor <span class="text-indigo-400">Pro</span></h1>
-                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit medical documents without them ever leaving your device.</p>
+                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit medical documents without them ever leaving your browser.</p>
                 <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg">
                     <p class="text-sm">⚠️ Previous session found.</p>
                     <button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button>
@@ -110,7 +113,7 @@
         </div>
     </div>
 
-    <!-- MAIN APPLICATION -->
+    <!-- MAIN APP -->
     <div class="app-container hidden flex h-screen">
         <!-- SIDEBAR -->
         <aside id="sidebar" class="w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col flex-shrink-0 z-40 fixed md:relative h-full transition-transform transform -translate-x-full md:translate-x-0 shadow-xl md:shadow-none">
@@ -121,26 +124,29 @@
             <div id="sourceFileList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll"></div>
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3">
                 <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tools</div>
-                <button id="insertBlankBtn" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500">+</span> Insert Blank Page</button>
-                <button id="openTextModalBtn" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500">T</span> Text Editor</button>
+                <button id="insertBlankBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">+</span> Insert Blank Page</button>
+                <button id="openTextModalBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">T</span> Text Editor</button>
             </div>
         </aside>
 
-        <!-- WORKSPACE -->
+        <!-- MAIN VIEW -->
         <main id="main-view" class="flex-1 flex flex-col min-w-0 bg-slate-100 dark:bg-slate-900/50 relative">
             
             <!-- TOOLBAR -->
             <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm z-30 px-4 py-3 flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex items-center gap-4">
                     <button id="menu-toggle-btn" class="md:hidden text-slate-500 p-2 hover:bg-slate-100 rounded">☰</button>
+                    <!-- VIEW TOGGLES -->
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                         <button id="viewGridBtn" class="p-1.5 rounded bg-white dark:bg-slate-600 shadow-sm text-indigo-600"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
                         <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
                     </div>
+                    <!-- UNDO/REDO -->
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                         <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></button>
                         <button id="redoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg></button>
                     </div>
+                    <!-- ZOOM -->
                     <div class="hidden sm:flex items-center gap-2">
                         <input type="range" id="zoomSlider" min="100" max="300" value="180" class="w-24 h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-indigo-600">
                     </div>
@@ -160,6 +166,7 @@
                 </div>
             </header>
 
+            <!-- CANVAS / GRID -->
             <div id="page-grid-container" class="flex-1 overflow-y-auto p-8 relative custom-scroll">
                 <div id="page-grid" class="view-grid pb-32"></div>
             </div>
@@ -212,11 +219,11 @@
     </div>
 
     <script>
-    // --- WORKER CONFIGURATION FOR LOCAL EXECUTION ---
-    // Critical for offline/HIPAA usage. Point to local file.
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
+    // --- CONFIG ---
+    // Change this to 'js/pdf.worker.min.js' for HIPAA/Local mode
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    /* --- PERSISTENCE LAYER (IndexedDB) --- */
+    /* --- PERSISTENCE --- */
     class LocalStorageManager {
         constructor(dbName='PDFEditorDB', storeName='StateStore') { this.dbName=dbName; this.storeName=storeName; this.db=null; }
         async init() {
@@ -229,7 +236,6 @@
         }
         async saveState(sourceFiles, pages) {
             if(!this.db) await this.init();
-            // Convert Files to Blobs for storage optimization
             const serialized = sourceFiles.map(f => ({ id: f.id, name: f.name, type: f.type, file: f.file }));
             const state = { sourceFiles: serialized, pages: pages };
             return new Promise((r, j) => { const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).put(state, 'currentState'); tx.oncomplete=r; tx.onerror=j; });
@@ -241,7 +247,7 @@
         async clear() { if(!this.db) await this.init(); const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).clear(); }
     }
 
-    /* --- CORE APPLICATION CLASS --- */
+    /* --- APP --- */
     class VisualPDFTool {
         constructor() {
             this.sourceFiles = []; this.pages = []; this.selectedPageIds = new Set();
@@ -282,7 +288,7 @@
             setTimeout(() => { el.classList.add('translate-y-10', 'opacity-0'); setTimeout(() => el.remove(), 300); }, 3000);
         }
 
-        /* --- LOGIC: FILES --- */
+        /* --- FILES --- */
         async addFiles(files) {
             if (files.length === 0) return;
             this.saveState(); this.showLoader(true, 'Processing Files...');
@@ -319,7 +325,7 @@
             el.innerHTML = files.map(f => `<div class="p-2 text-xs bg-slate-100 dark:bg-slate-700 rounded mb-1 truncate shadow-sm border border-slate-200 dark:border-slate-600 flex items-center gap-2"><div class="w-2 h-2 rounded-full ${f.type.includes('pdf')?'bg-red-400':'bg-blue-400'}"></div>${f.name}</div>`).join('');
         }
 
-        /* --- LOGIC: RENDER --- */
+        /* --- RENDER --- */
         initIntersectionObserver() {
             const container = document.getElementById('page-grid-container'); if(!container) return;
             this.observer = new IntersectionObserver((entries) => {
@@ -361,7 +367,7 @@
                     const ratio = img.height / img.width; canvas.width = 200 * dpr; canvas.height = 200 * ratio * dpr;
                     const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr); ctx.translate(100, 100 * ratio); ctx.rotate((pageData.rotation * Math.PI) / 180);
                     if(pageData.rotation % 180 !== 0) ctx.drawImage(img, -100 * ratio, -100, 200 * ratio, 200); else ctx.drawImage(img, -100, -100 * ratio, 200, 200 * ratio);
-                    URL.revokeObjectURL(url); // Memory Management
+                    URL.revokeObjectURL(url);
                 };
             } else {
                 try {
@@ -374,7 +380,7 @@
             if(skeleton) skeleton.remove(); container.classList.remove('opacity-0');
         }
 
-        /* --- LOGIC: EDITOR --- */
+        /* --- EDITOR --- */
         async openPageEditor(pageId) {
             const page = this.pages.find(p => p.id === pageId); if(!page) return;
             this.editingPageId = pageId; this.tempTextOverlays = JSON.parse(JSON.stringify(page.textOverlays || [])); this.tempRotation = page.rotation; this.activeTextIndex = -1;
@@ -420,7 +426,7 @@
         startDrag(e, index, container) { let isDragging = true; const rect = container.getBoundingClientRect(); const moveHandler = (ev) => { if(!isDragging) return; const x = ev.clientX - rect.left; const y = ev.clientY - rect.top; this.tempTextOverlays[index].xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100)); this.tempTextOverlays[index].yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100)); this.renderOverlayLayers(); }; const upHandler = () => { isDragging = false; document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', upHandler); }; document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', upHandler); }
         savePageEdits() { this.saveState(); const page = this.pages.find(p => p.id === this.editingPageId); page.textOverlays = JSON.parse(JSON.stringify(this.tempTextOverlays)); page.rotation = this.tempRotation; this.showToast("Changes saved"); this.renderAllPages(); this.textModal.classList.add('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.add('scale-95'); }
 
-        /* --- LOGIC: INTERACTIONS --- */
+        /* --- INTERACTIONS --- */
         initContextMenu() {
             document.addEventListener('click', () => this.contextMenu.classList.add('hidden'));
             this.pageGrid.addEventListener('contextmenu', e => { const item = e.target.closest('.page-item'); if(!item) return; e.preventDefault(); this.contextTargetId = item.dataset.id; let x = e.clientX, y = e.clientY; if(x + 200 > window.innerWidth) x = window.innerWidth - 210; if(y + 200 > window.innerHeight) y = window.innerHeight - 210; this.contextMenu.style.left = `${x}px`; this.contextMenu.style.top = `${y}px`; this.contextMenu.classList.remove('hidden'); });
@@ -448,7 +454,7 @@
         async clearWorkspace() { this.saveState(); this.pages = []; this.sourceFiles = []; this.selectedPageIds.clear(); this.renderAllPages(); document.getElementById('start-screen').classList.remove('hidden'); document.querySelector('.app-container').classList.add('hidden'); await this.dbManager.clear(); }
         showLoader(show, text = 'Processing...') { const loader = document.getElementById('loader'); if(loader) { loader.classList.toggle('hidden', !show); document.getElementById('loader-text').innerText = text; } }
         toggleSidebar(show){ document.querySelector('.app-container').classList.toggle('sidebar-mobile-open', show); document.getElementById('sidebar-overlay').classList.toggle('hidden', !show); if(show) document.getElementById('sidebar').classList.remove('-translate-x-full'); else document.getElementById('sidebar').classList.add('-translate-x-full'); }
-        
+        checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark'); }
         initMarqueeSelection() {
             const container = document.getElementById('page-grid-container'); if(!container) return; let isSelecting=false, startX, startY, marquee=null;
             container.addEventListener('mousedown', e => { if(e.target !== container && e.target !== document.getElementById('page-grid')) return; isSelecting=true; const rect=container.getBoundingClientRect(); startX=e.clientX-rect.left+container.scrollLeft; startY=e.clientY-rect.top+container.scrollTop; marquee=document.createElement('div'); marquee.className='marquee-box'; marquee.style.left=startX+'px'; marquee.style.top=startY+'px'; container.appendChild(marquee); if(!e.ctrlKey&&!e.shiftKey) { this.selectedPageIds.clear(); this.updateSelectionUI(); } });
