@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual PDF Editor Pro (Secure)</title>
+    <title>Visual PDF Editor Pro (Full Suite)</title>
 
-    <!-- LIBRARIES: CDN for immediate testing. 
-         FOR OFFLINE/HIPAA: Download these 4 files to a 'js/' folder and change src="js/filename.js" -->
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- LOCAL LIBRARIES -->
+    <script src="js/pdf-lib.min.js"></script>
+    <script src="js/pdf.min.js"></script>
+    <script src="js/sortable.min.js"></script>
+    <script src="js/tailwindcss.js"></script>
 
     <script>
         tailwind.config = {
@@ -18,6 +17,7 @@
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: { primary: '#4f46e5', secondary: '#64748b' },
                     animation: { 'shimmer': 'shimmer 1.5s infinite' },
                     keyframes: { shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } } }
                 }
@@ -26,24 +26,22 @@
     </script>
     
     <style>
-        /* CORE UX */
         body { font-family: 'Inter', sans-serif; user-select: none; overscroll-behavior: none; }
         
-        /* CARD ANIMATIONS */
-        .page-item { transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease; }
+        /* Animations & Interactions */
+        .page-item { transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1); }
         .page-item:hover { transform: translateY(-4px) scale(1.01); z-index: 10; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
         .page-item.selected { ring: 2px solid #6366f1; transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(99 102 241 / 0.15); }
         
-        /* DRAG & DROP */
         .sortable-ghost { opacity: 0.4; background: #e0e7ff; border: 2px dashed #6366f1; }
         .sortable-drag { cursor: grabbing; opacity: 1 !important; background: white; transform: scale(1.05); z-index: 50; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.2); }
         
-        /* FLOATING ISLAND */
         #contextual-footer { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; }
         #contextual-footer.hidden-island { transform: translate(-50%, 200%); opacity: 0; pointer-events: none; }
         
-        /* UTILITIES */
         .marquee-box { position: absolute; border: 1px solid #6366f1; background-color: rgba(99, 102, 241, 0.1); z-index: 50; pointer-events: none; }
+        
+        /* Grid System */
         :root { --grid-size: 180px; }
         .view-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); gap: 1.5rem; }
         .view-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -51,7 +49,7 @@
         .view-list .canvas-wrapper { width: 60px; height: 100%; margin-right: 1rem; flex-shrink: 0; }
         .view-list .page-info { border: none; flex: 1; text-align: left; }
         
-        /* SKELETON LOADING */
+        /* Utilities */
         .skeleton-shimmer { background: #f1f5f9; position: relative; overflow: hidden; }
         .skeleton-shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: shimmer 1.5s infinite; }
         .dark .skeleton-shimmer { background: #334155; }
@@ -61,19 +59,16 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
 
-        /* EDITOR OVERLAY */
         .draggable-text { position: absolute; cursor: move; user-select: none; white-space: pre; border: 1px dashed transparent; padding: 4px; line-height: 1; }
         .draggable-text:hover, .draggable-text.active { border-color: #6366f1; background: rgba(99, 102, 241, 0.1); }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 h-full overflow-hidden transition-colors duration-200">
 
-    <!-- TOAST NOTIFICATIONS -->
     <div id="toast-container" class="fixed bottom-6 right-6 flex flex-col gap-3 z-[100]"></div>
-
-    <!-- MOBILE SIDEBAR OVERLAY -->
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity"></div>
-    
+    <iframe id="printFrame" class="hidden"></iframe>
+
     <!-- CONTEXT MENU -->
     <div id="context-menu" class="hidden fixed z-50 bg-white dark:bg-slate-800 shadow-xl rounded-lg border border-slate-200 dark:border-slate-700 w-52 py-1 transform scale-100 origin-top-left">
         <button id="ctx-edit" class="w-full text-left px-4 py-2.5 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-3"><span>✎</span> Edit Page</button>
@@ -94,7 +89,7 @@
                     HIPAA Ready: 100% Local
                 </div>
                 <h1 class="text-4xl font-bold mb-4 tracking-tight">Visual PDF Editor <span class="text-indigo-400">Pro</span></h1>
-                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit medical documents without them ever leaving your browser.</p>
+                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit medical documents locally.</p>
                 <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg">
                     <p class="text-sm">⚠️ Previous session found.</p>
                     <button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button>
@@ -120,37 +115,33 @@
                 <h2 class="font-bold text-sm uppercase tracking-wider text-slate-500 dark:text-slate-400">Source Documents</h2>
                 <button id="sidebar-close-btn" class="md:hidden text-slate-400 hover:text-slate-700">✕</button>
             </div>
+            <!-- SOURCE FILES LIST -->
             <div id="sourceFileList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll"></div>
+            
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3">
-                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tools</div>
-                <button id="insertBlankBtn" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">+</span> Insert Blank Page</button>
-                <button id="openTextModalBtn" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">T</span> Text Editor</button>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Quick Tools</div>
+                <button id="insertBlankBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">+</span> Insert Blank Page</button>
+                <button id="openTextModalBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">T</span> Text / Watermark</button>
             </div>
         </aside>
 
-        <!-- MAIN VIEW -->
+        <!-- MAIN CONTENT -->
         <main id="main-view" class="flex-1 flex flex-col min-w-0 bg-slate-100 dark:bg-slate-900/50 relative">
-            
-            <!-- TOOLBAR -->
             <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm z-30 px-4 py-3 flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex items-center gap-4">
                     <button id="menu-toggle-btn" class="md:hidden text-slate-500 p-2 hover:bg-slate-100 rounded">☰</button>
-                    <!-- VIEW TOGGLES -->
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                         <button id="viewGridBtn" class="p-1.5 rounded bg-white dark:bg-slate-600 shadow-sm text-indigo-600"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
                         <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
                     </div>
-                    <!-- UNDO/REDO -->
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                         <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></button>
                         <button id="redoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg></button>
                     </div>
-                    <!-- ZOOM -->
                     <div class="hidden sm:flex items-center gap-2">
                         <input type="range" id="zoomSlider" min="100" max="300" value="180" class="w-24 h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-indigo-600">
                     </div>
                 </div>
-
                 <div class="flex items-center gap-3">
                     <button id="sortByNumberBtn" class="text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 transition">Sort #</button>
                     <button id="clearBtn" class="text-xs font-bold px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded transition">Clear</button>
@@ -165,11 +156,9 @@
                 </div>
             </header>
 
-            <div id="page-grid-container" class="flex-1 overflow-y-auto p-8 relative custom-scroll">
-                <div id="page-grid" class="view-grid pb-32"></div>
-            </div>
+            <div id="page-grid-container" class="flex-1 overflow-y-auto p-8 relative custom-scroll"><div id="page-grid" class="view-grid pb-32"></div></div>
 
-            <!-- FLOATING ISLAND ACTION BAR -->
+            <!-- FLOATING ISLAND (UPDATED EXPORT) -->
             <footer id="contextual-footer" class="fixed bottom-8 left-1/2 -translate-x-1/2 hidden-island z-40 bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 backdrop-blur-md rounded-full shadow-2xl px-6 py-3 flex items-center gap-6 border border-slate-700 dark:border-slate-200 transition-all duration-300">
                 <div class="flex items-center gap-3 text-sm font-medium border-r border-slate-600 dark:border-slate-300 pr-6">
                     <span id="selection-count">0 selected</span>
@@ -183,12 +172,23 @@
                     <button id="deleteSelectedBtn" class="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 dark:text-red-600 dark:hover:text-red-700 rounded-full transition" title="Delete"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                 </div>
                 <div class="h-6 w-px bg-slate-600 dark:bg-slate-300"></div>
-                <button id="saveBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-indigo-500/30 transition hover:scale-105 flex items-center gap-2">Export PDF <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></button>
+                
+                <!-- SAVE/PRINT DROPDOWN -->
+                <div class="relative group">
+                    <button class="bg-indigo-500 hover:bg-indigo-600 text-white pl-5 pr-3 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">
+                        Export PDF <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute bottom-full right-0 mb-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden hidden group-hover:block">
+                        <button id="saveBtn" class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700">💾 Save File</button>
+                        <button id="printBtn" class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700">🖨 Print</button>
+                        <button id="previewBtn" class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700">👁 Preview</button>
+                    </div>
+                </div>
             </footer>
         </main>
     </div>
 
-    <!-- TEXT EDITOR MODAL -->
+    <!-- TEXT EDITOR MODAL (UPDATED WITH LOCATION PICKER) -->
     <div id="text-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
         <div class="bg-white dark:bg-slate-800 w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300">
             <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex justify-between items-center shrink-0">
@@ -197,9 +197,27 @@
             </div>
             <div class="flex flex-1 overflow-hidden">
                 <div class="w-80 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex flex-col overflow-y-auto p-6 z-10 shadow-lg custom-scroll">
-                    <div class="mb-6"><label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Rotation</label><div class="grid grid-cols-2 gap-2"><button id="editor-rotate-ccw" class="py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm hover:bg-slate-100 dark:hover:bg-slate-700">↶ Left</button><button id="editor-rotate-cw" class="py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Right ↷</button></div></div>
+                    <!-- PRESETS SECTION -->
+                    <div class="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Quick Presets</label>
+                        <button id="addWatermarkBtn" class="w-full bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 py-2 rounded-lg text-sm font-bold border border-indigo-200 dark:border-indigo-800 mb-4 transition">✨ Add "CONFIDENTIAL" Watermark</button>
+                        
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Quick Positioning</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="tl">↖</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="tc">↑</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="tr">↗</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="cl">←</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="cc">●</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="cr">→</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="bl">↙</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="bc">↓</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="br">↘</button>
+                        </div>
+                    </div>
+
                     <div class="space-y-4 flex-1">
-                        <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800"><label class="block text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2">ADD TEXT OVERLAY</label><textarea id="txt-content" placeholder="Type text here..." class="w-full h-20 text-sm p-3 rounded-lg border-0 focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 mb-2 resize-none shadow-sm"></textarea><button id="addTextLayerBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium shadow-sm transition">Add Text</button></div>
+                        <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800"><label class="block text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2">ADD TEXT</label><textarea id="txt-content" placeholder="Type text here..." class="w-full h-16 text-sm p-3 rounded-lg border-0 focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 mb-2 resize-none shadow-sm"></textarea><button id="addTextLayerBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium shadow-sm transition">Add Text Layer</button></div>
                         <div id="layer-controls" class="hidden space-y-4 opacity-50 pointer-events-none transition-opacity"><div class="h-px bg-slate-200 dark:bg-slate-700"></div><div class="flex justify-between items-center"><span class="text-xs font-bold text-slate-400 uppercase">Selected Layer</span><button id="delete-layer-btn" class="text-red-500 text-xs hover:underline font-bold">Remove</button></div><div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-slate-500 mb-1 block">Font</label><select id="txt-font" class="w-full text-sm p-1.5 rounded border border-slate-200 dark:border-slate-600 bg-transparent"><option value="Helvetica">Helvetica</option><option value="TimesRoman">Times</option><option value="Courier">Courier</option></select></div><div><label class="text-xs text-slate-500 mb-1 block">Size (px)</label><input type="number" id="txt-size" class="w-full text-sm p-1.5 rounded border border-slate-200 dark:border-slate-600 bg-transparent"></div></div><div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-slate-500 mb-1 block">Color</label><input type="color" id="txt-color" class="w-full h-8 cursor-pointer rounded"></div><div><label class="text-xs text-slate-500 mb-1 block">Opacity</label><input type="range" id="txt-opacity" min="0.1" max="1" step="0.1" value="1" class="w-full h-2 bg-slate-200 rounded-lg mt-2"></div></div><div><label class="text-xs text-slate-500 mb-1 block">Text Rotation</label><input type="range" id="txt-rotation" min="-180" max="180" class="w-full h-2 bg-slate-200 rounded-lg accent-indigo-600"></div></div>
                     </div>
                 </div>
@@ -210,18 +228,16 @@
         </div>
     </div>
 
-    <!-- LOADER -->
     <div id="loader" class="fixed inset-0 z-[100] bg-white/90 dark:bg-slate-900/90 flex flex-col items-center justify-center hidden backdrop-blur-sm">
         <div class="w-12 h-12 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
         <p id="loader-text" class="text-slate-600 dark:text-slate-300 font-medium animate-pulse">Processing...</p>
     </div>
 
     <script>
-    // --- WORKER CONFIGURATION ---
-    // Change to 'js/pdf.worker.min.js' for HIPAA/Local mode
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    // --- LOCAL WORKER CONFIG ---
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
 
-    /* --- PERSISTENCE --- */
+    /* --- DB MANAGER --- */
     class LocalStorageManager {
         constructor(dbName='PDFEditorDB', storeName='StateStore') { this.dbName=dbName; this.storeName=storeName; this.db=null; }
         async init() {
@@ -273,6 +289,7 @@
             } catch(e) { console.log("DB Init Error", e); }
         }
 
+        checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark'); }
         safeAddListener(id, event, handler) { const el = document.getElementById(id); if (el) el.addEventListener(event, handler); }
         
         showToast(message, type='success') {
@@ -320,7 +337,11 @@
             const el = document.getElementById('sourceFileList'); if(!el) return;
             const activeFiles = new Set(this.pages.map(p => p.sourceFile.id));
             const files = this.sourceFiles.filter(f => activeFiles.has(f.id) || f.type === 'blank');
-            el.innerHTML = files.map(f => `<div class="p-2 text-xs bg-slate-100 dark:bg-slate-700 rounded mb-1 truncate shadow-sm border border-slate-200 dark:border-slate-600 flex items-center gap-2"><div class="w-2 h-2 rounded-full ${f.type.includes('pdf')?'bg-red-400':'bg-blue-400'}"></div>${f.name}</div>`).join('');
+            el.innerHTML = files.map(f => `
+                <div class="p-2.5 text-xs bg-white dark:bg-slate-700 rounded-lg mb-2 shadow-sm border border-slate-200 dark:border-slate-600 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-600 flex items-center justify-center text-lg">${f.type.includes('image')?'🖼':'📄'}</div>
+                    <div class="flex-1 truncate font-medium text-slate-700 dark:text-slate-200">${f.name}</div>
+                </div>`).join('');
         }
 
         /* --- RENDER --- */
@@ -335,7 +356,7 @@
         
         async renderThumbnail(pageData, index) {
             const item = document.createElement('div');
-            item.className = 'page-item group relative cursor-pointer overflow-hidden flex flex-col h-full';
+            item.className = 'page-item group relative cursor-pointer overflow-hidden flex flex-col h-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm';
             item.dataset.id = pageData.id;
             const hasText = pageData.textOverlays && pageData.textOverlays.length > 0;
             const badgeHtml = hasText ? '<div class="absolute top-2 right-2 bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow z-10">T</div>' : '';
@@ -417,6 +438,16 @@
             } else { controls.classList.add('opacity-50', 'pointer-events-none'); }
         }
         addTextLayerToEditor() { const text = document.getElementById('txt-content').value || "New Text"; this.tempTextOverlays.push({ text, xPercent: 50, yPercent: 50, size: 24, color: '#000000', opacity: 1, rotation: 0, font: 'Helvetica' }); this.activeTextIndex = this.tempTextOverlays.length - 1; this.renderOverlayLayers(); }
+        // NEW: WATERMARK
+        addWatermark() { this.tempTextOverlays.push({ text: "CONFIDENTIAL", xPercent: 50, yPercent: 50, size: 80, color: '#FF0000', opacity: 0.2, rotation: 45, font: 'Helvetica' }); this.activeTextIndex = this.tempTextOverlays.length - 1; this.renderOverlayLayers(); }
+        // NEW: POSITION PRESETS
+        setTextPosition(pos) { if(this.activeTextIndex === -1) return; const l = this.tempTextOverlays[this.activeTextIndex]; 
+            const m = 10; // margin
+            if(pos.includes('l')) l.xPercent = m; if(pos.includes('r')) l.xPercent = 100-m; if(pos.includes('c')) { if(pos[1]==='c') l.xPercent=50; else if(pos[0]!=='c') l.xPercent=50; }
+            if(pos.includes('t')) l.yPercent = m; if(pos.includes('b')) l.yPercent = 100-m; if(pos.includes('c')) { if(pos[0]==='c') l.yPercent=50; else if(pos[1]!=='c') l.yPercent=50; }
+            this.renderOverlayLayers();
+        }
+        
         setActiveLayer(index) { this.activeTextIndex = index; this.renderOverlayLayers(); }
         deleteActiveLayer() { if(this.activeTextIndex > -1) { this.tempTextOverlays.splice(this.activeTextIndex, 1); this.activeTextIndex = -1; this.renderOverlayLayers(); } }
         updateActiveTextLayer() { if(this.activeTextIndex === -1) return; const l = this.tempTextOverlays[this.activeTextIndex]; l.text = document.getElementById('txt-content').value; l.size = parseInt(document.getElementById('txt-size').value); l.color = document.getElementById('txt-color').value; l.font = document.getElementById('txt-font').value; l.rotation = parseInt(document.getElementById('txt-rotation').value); l.opacity = parseFloat(document.getElementById('txt-opacity').value); this.renderOverlayLayers(); }
@@ -453,9 +484,6 @@
         showLoader(show, text = 'Processing...') { const loader = document.getElementById('loader'); if(loader) { loader.classList.toggle('hidden', !show); document.getElementById('loader-text').innerText = text; } }
         toggleSidebar(show){ document.querySelector('.app-container').classList.toggle('sidebar-mobile-open', show); document.getElementById('sidebar-overlay').classList.toggle('hidden', !show); if(show) document.getElementById('sidebar').classList.remove('-translate-x-full'); else document.getElementById('sidebar').classList.add('-translate-x-full'); }
         
-        // --- ADDED MISSING METHOD ---
-        checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark'); }
-
         initMarqueeSelection() {
             const container = document.getElementById('page-grid-container'); if(!container) return; let isSelecting=false, startX, startY, marquee=null;
             container.addEventListener('mousedown', e => { if(e.target !== container && e.target !== document.getElementById('page-grid')) return; isSelecting=true; const rect=container.getBoundingClientRect(); startX=e.clientX-rect.left+container.scrollLeft; startY=e.clientY-rect.top+container.scrollTop; marquee=document.createElement('div'); marquee.className='marquee-box'; marquee.style.left=startX+'px'; marquee.style.top=startY+'px'; container.appendChild(marquee); if(!e.ctrlKey&&!e.shiftKey) { this.selectedPageIds.clear(); this.updateSelectionUI(); } });
@@ -487,7 +515,14 @@
             this.safeAddListener('duplicateSelectedBtn', 'click', () => this.duplicateSelected());
             this.safeAddListener('sortByNumberBtn', 'click', () => this.sortByNumber());
             this.safeAddListener('clearBtn', 'click', () => this.clearWorkspace());
+            // NEW: Footer Exports
             this.safeAddListener('saveBtn', 'click', () => this.createPdf());
+            this.safeAddListener('printBtn', 'click', () => this.createPdf(false, true)); // Print Mode
+            this.safeAddListener('previewBtn', 'click', () => this.createPdf(true)); // Preview Mode
+            // NEW: Editor Features
+            this.safeAddListener('addWatermarkBtn', 'click', () => this.addWatermark());
+            document.querySelectorAll('.pos-btn').forEach(btn => btn.addEventListener('click', e => this.setTextPosition(e.target.dataset.pos)));
+
             this.pageGrid.addEventListener('click', this.handlePageClick.bind(this));
             this.pageGrid.addEventListener('dblclick', e => { const item = e.target.closest('.page-item'); if (item) this.openPageEditor(item.dataset.id); });
             ['startDropZone', 'main-view'].forEach(id => { const z = document.getElementById(id); if(z) { z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('dragover'); }); z.addEventListener('dragleave', e => { e.preventDefault(); z.classList.remove('dragover'); }); z.addEventListener('drop', e => { e.preventDefault(); z.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); }); } });
@@ -495,7 +530,7 @@
         hexToRgb(hex) { const r = parseInt(hex.substr(1, 2), 16) / 255; const g = parseInt(hex.substr(3, 2), 16) / 255; const b = parseInt(hex.substr(5, 2), 16) / 255; return { r, g, b }; }
 
         /* --- EXPORT LOGIC --- */
-        async createPdf(preview) {
+        async createPdf(preview, print) {
             if (!this.pages.length) return; this.showLoader(true, 'Generating PDF...');
             try {
                 const doc = await PDFLib.PDFDocument.create();
@@ -514,6 +549,7 @@
                 }
                 const pdfBytes = await doc.save(); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); const url = URL.createObjectURL(blob);
                 if (preview) window.open(url, '_blank');
+                else if (print) { const iframe = document.getElementById('printFrame'); iframe.src = url; iframe.onload = () => { iframe.contentWindow.print(); }; }
                 else { const link = document.createElement('a'); link.href = url; const nameInput = document.getElementById('filenameInput'); link.download = (nameInput ? nameInput.value : 'document') + '.pdf'; document.body.appendChild(link); link.click(); document.body.removeChild(link); this.showToast('PDF Exported Successfully'); }
             } catch (e) { console.error(e); this.showToast('Error: ' + e.message, 'error'); }
             this.showLoader(false);
