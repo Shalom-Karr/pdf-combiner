@@ -2,28 +2,29 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 
 class VisualPDFTool {
     constructor() {
-        // Core Data
         this.sourceFiles = [];
-        this.pages = []; // Current state of pages
+        this.pages = []; 
         this.selectedPageIds = new Set();
+        this.lastSelectedId = null;
         
-        // History System
+        // History
         this.historyStack = [];
         this.redoStack = [];
         this.maxHistory = 20;
 
-        // DOM Elements
+        // UI Refs
         this.pageGrid = document.getElementById('page-grid');
         this.mainView = document.getElementById('main-view');
         this.contextualFooter = document.getElementById('contextual-footer');
         this.selectionCount = document.getElementById('selection-count');
         
-        // Buttons & Inputs
+        // Buttons
         this.undoBtn = document.getElementById('undoBtn');
         this.redoBtn = document.getElementById('redoBtn');
         this.zoomSlider = document.getElementById('zoomSlider');
         this.darkModeToggle = document.getElementById('darkModeToggle');
         this.previewModal = document.getElementById('preview-modal');
+        this.textModal = document.getElementById('text-modal');
         this.rangeInput = document.getElementById('rangeInput');
         this.startScreen = document.getElementById('start-screen');
         this.appContainer = document.querySelector('.app-container');
@@ -35,31 +36,28 @@ class VisualPDFTool {
         this.initSortable();
         this.initEventListeners();
         this.checkTheme();
+        // Set initial Grid Size
+        document.documentElement.style.setProperty('--grid-size', '180px');
     }
 
-    // --- HISTORY SYSTEM (UNDO/REDO) ---
+    // --- HISTORY (UNDO/REDO) ---
     saveState() {
-        // Clone the pages array (metadata only). 
-        // We don't clone the heavy PDF objects, just references to them.
         const stateSnapshot = this.pages.map(page => ({
             id: page.id,
             sourceFileId: page.sourceFile.id,
             sourcePageIndex: page.sourcePageIndex,
             type: page.type,
             rotation: page.rotation,
-            // We might need to store the page ID if we want to preserve selection, but simpler to reset selection on undo
+            textOverlays: JSON.parse(JSON.stringify(page.textOverlays || [])) // Deep copy text data
         }));
 
         this.historyStack.push(stateSnapshot);
         if (this.historyStack.length > this.maxHistory) this.historyStack.shift();
-        
-        // Clear redo stack on new action
         this.redoStack = [];
         this.updateHistoryButtons();
     }
 
     restoreState(stateSnapshot) {
-        // 1. Map the snapshot back to real objects
         const newPages = [];
         for (const item of stateSnapshot) {
             const sourceFile = this.sourceFiles.find(f => f.id === item.sourceFileId);
@@ -69,26 +67,21 @@ class VisualPDFTool {
                     sourceFile: sourceFile,
                     sourcePageIndex: item.sourcePageIndex,
                     type: item.type,
-                    rotation: item.rotation
+                    rotation: item.rotation,
+                    textOverlays: item.textOverlays || []
                 });
             }
         }
-        
         this.pages = newPages;
         this.selectedPageIds.clear();
-        this.renderAllPages(); // Re-render the grid
+        this.renderAllPages(); 
         this.updateStatus();
     }
 
     performUndo() {
         if (this.historyStack.length === 0) return;
-        
-        // Save current state to redo stack
-        const currentState = this.pages.map(p => ({
-            id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation
-        }));
+        const currentState = this.snapshotCurrentState();
         this.redoStack.push(currentState);
-
         const prevState = this.historyStack.pop();
         this.restoreState(prevState);
         this.updateHistoryButtons();
@@ -96,16 +89,18 @@ class VisualPDFTool {
 
     performRedo() {
         if (this.redoStack.length === 0) return;
-
-        // Save current state to history stack (without clearing redo)
-        const currentState = this.pages.map(p => ({
-            id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation
-        }));
+        const currentState = this.snapshotCurrentState();
         this.historyStack.push(currentState);
-
         const nextState = this.redoStack.pop();
         this.restoreState(nextState);
         this.updateHistoryButtons();
+    }
+
+    snapshotCurrentState() {
+        return this.pages.map(p => ({
+            id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, 
+            type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || []))
+        }));
     }
 
     updateHistoryButtons() {
@@ -113,17 +108,13 @@ class VisualPDFTool {
         this.redoBtn.disabled = this.redoStack.length === 0;
     }
 
-    // --- INITIALIZATION ---
+    // --- SETUP ---
     initSortable() {
         Sortable.create(this.pageGrid, {
             animation: 150,
             ghostClass: 'sortable-ghost',
-            onStart: () => {
-                this.saveState(); // Save before drag starts
-            },
-            onEnd: () => {
-                this.updateDataOrderFromDOM();
-            },
+            onStart: () => this.saveState(),
+            onEnd: () => this.updateDataOrderFromDOM(),
         });
     }
 
@@ -132,9 +123,14 @@ class VisualPDFTool {
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); this.performUndo(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); this.performRedo(); }
-            if (e.key === 'Delete' || e.key === 'Backspace') { 
-                if(document.activeElement.tagName !== 'INPUT') this.deleteSelectedPages(); 
+            if ((e.key === 'Delete' || e.key === 'Backspace') && document.activeElement.tagName !== 'INPUT') { 
+                this.deleteSelectedPages(); 
             }
+        });
+
+        // Safety
+        window.addEventListener('beforeunload', (e) => {
+            if (this.pages.length > 0) { e.preventDefault(); e.returnValue = ''; }
         });
 
         // Toolbar
@@ -144,17 +140,30 @@ class VisualPDFTool {
             document.documentElement.style.setProperty('--grid-size', `${e.target.value}px`);
         });
         this.darkModeToggle.addEventListener('click', () => this.toggleDarkMode());
+        
+        // Help
+        document.getElementById('helpBtn').addEventListener('click', () => {
+            alert("⌨️ Shortcuts:\n\n• Ctrl/Shift + Click: Select multiple\n• Ctrl + Z/Y: Undo/Redo\n• Delete: Remove pages\n• Drag: Reorder");
+        });
 
-        // Sidebar & File Input
+        // File Inputs
         document.getElementById('startChooseFileBtn').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('addFilesBtn').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileSelect(e));
+        
+        // Sidebar
         document.getElementById('sidebar-close-btn').addEventListener('click', () => this.toggleSidebar(false));
         document.getElementById('menu-toggle-btn').addEventListener('click', () => this.toggleSidebar(true));
         
-        // Sidebar Tools
+        // Tools
         document.getElementById('selectRangeBtn').addEventListener('click', () => this.selectByRange());
         document.getElementById('insertBlankBtn').addEventListener('click', () => this.insertBlankPage());
+        document.getElementById('openTextModalBtn').addEventListener('click', () => this.textModal.classList.remove('hidden'));
+
+        // Text Modal
+        document.querySelector('.close-text-modal').addEventListener('click', () => this.textModal.classList.add('hidden'));
+        document.getElementById('applyTextSelected').addEventListener('click', () => this.applyTextToPages(true));
+        document.getElementById('applyTextAll').addEventListener('click', () => this.applyTextToPages(false));
 
         // Editor Actions
         document.getElementById('clearBtn').addEventListener('click', () => this.clearWorkspace());
@@ -173,23 +182,21 @@ class VisualPDFTool {
         document.getElementById('printBtn').addEventListener('click', (e) => { e.preventDefault(); this.printPdf(); });
         
         const dropdownToggle = document.getElementById('exportDropdownToggle');
-        dropdownToggle.addEventListener('click', () => {
-            document.getElementById('exportDropdownMenu').classList.toggle('hidden');
-        });
+        dropdownToggle.addEventListener('click', () => document.getElementById('exportDropdownMenu').classList.toggle('hidden'));
         document.addEventListener('click', (e) => {
             if (!dropdownToggle.contains(e.target) && !document.getElementById('exportDropdownMenu').contains(e.target)) {
                 document.getElementById('exportDropdownMenu').classList.add('hidden');
             }
         });
 
-        // Grid Interaction
+        // Grid
         this.pageGrid.addEventListener('click', this.handlePageClick.bind(this));
         this.pageGrid.addEventListener('dblclick', (e) => {
             const item = e.target.closest('.page-item');
             if (item) this.openPreviewModal(item.dataset.id);
         });
 
-        // Drag Drop Files
+        // Drag Drop
         const dropZones = [document.getElementById('startDropZone'), this.mainView];
         dropZones.forEach(zone => {
             zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
@@ -197,22 +204,20 @@ class VisualPDFTool {
             zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); });
         });
 
-        // Modal
+        // Preview Modal
         document.querySelector('.close-modal-btn').addEventListener('click', () => this.previewModal.classList.add('hidden'));
-        this.previewModal.addEventListener('click', (e) => { if (e.target === this.previewModal) this.previewModal.classList.add('hidden'); });
     }
-    
-// --- FILE HANDLING WRAPPER ---
+
+    // --- LOGIC ---
     async handleFileSelect(e) {
         const files = Array.from(e.target.files);
         await this.addFiles(files);
         e.target.value = ''; 
     }
-    
-    // --- CORE FILE HANDLING ---
+
     async addFiles(files) {
         if (files.length === 0) return;
-        this.saveState(); // Save before adding
+        this.saveState();
         this.showLoader(true);
 
         if (this.pages.length === 0) {
@@ -224,38 +229,30 @@ class VisualPDFTool {
             const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             const sourceFile = { id: fileId, name: file.name, file: file, type: file.type };
             
-            // If it's an image
             if (file.type.startsWith('image/')) {
                 this.sourceFiles.push(sourceFile);
                 this.addPageToData(sourceFile, 0, 'image');
             } 
-            // If it's a PDF
             else if (file.type === 'application/pdf') {
                 try {
                     const arrayBuffer = await file.arrayBuffer();
                     sourceFile.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                    sourceFile.pdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer); // Load purely for metadata/page count initially
+                    sourceFile.pdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer); 
                     this.sourceFiles.push(sourceFile);
-                    
                     for (let i = 0; i < sourceFile.pdfDoc.numPages; i++) {
                         this.addPageToData(sourceFile, i, 'pdf');
                     }
-                } catch (err) {
-                    console.error(err);
-                    alert(`Error loading ${file.name}`);
-                }
+                } catch (err) { console.error(err); alert(`Error loading ${file.name}`); }
             }
         }
-        
         this.updateSourceFileList();
-        this.renderNewPages(); // Only render pages that aren't in the DOM yet
+        this.renderNewPages();
         this.updateStatus();
         this.showLoader(false);
     }
 
     insertBlankPage() {
         this.saveState();
-        // Create a virtual source file for blanks
         let blankSource = this.sourceFiles.find(f => f.id === 'virtual_blank');
         if (!blankSource) {
             blankSource = { id: 'virtual_blank', name: 'Blank Page', type: 'blank' };
@@ -267,88 +264,125 @@ class VisualPDFTool {
     }
 
     addPageToData(sourceFile, index, type) {
-        const pageId = `page_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         this.pages.push({
-            id: pageId,
-            sourceFile: sourceFile,
-            sourcePageIndex: index,
-            type: type,
-            rotation: 0
+            id: `page_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            sourceFile: sourceFile, sourcePageIndex: index, type: type, rotation: 0, textOverlays: []
         });
     }
 
-    // --- RENDERING ---
-    // Efficiently renders only what is needed
+    // --- TEXT TOOL ---
+    applyTextToPages(onlySelected) {
+        const text = document.getElementById('txt-content').value;
+        if (!text) return;
+        
+        const position = document.getElementById('txt-position').value;
+        const size = parseInt(document.getElementById('txt-size').value) || 12;
+        const color = document.getElementById('txt-color').value; // Hex string
+
+        this.saveState();
+        
+        const targets = onlySelected 
+            ? this.pages.filter(p => this.selectedPageIds.has(p.id))
+            : this.pages;
+        
+        if (onlySelected && targets.length === 0) { alert("No pages selected."); return; }
+
+        targets.forEach(page => {
+            if (!page.textOverlays) page.textOverlays = [];
+            page.textOverlays.push({ text, position, size, color });
+            
+            // Visual Indicator on Thumbnail
+            const el = this.pageGrid.querySelector(`.page-item[data-id="${page.id}"]`);
+            if(el && !el.querySelector('.text-badge')) {
+                const badge = document.createElement('div');
+                badge.className = 'text-badge absolute top-8 right-2 bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow z-10';
+                badge.innerText = 'T';
+                el.appendChild(badge);
+            }
+        });
+
+        this.textModal.classList.add('hidden');
+        document.getElementById('txt-content').value = ''; // Reset
+    }
+
+    // --- RENDERING (TAILWIND STYLES) ---
     renderAllPages() {
         this.pageGrid.innerHTML = '';
         this.pages.forEach((page, index) => this.renderThumbnail(page, index));
     }
 
     renderNewPages() {
-        // Find pages not yet in DOM
         const existingIds = new Set([...this.pageGrid.children].map(el => el.dataset.id));
         this.pages.forEach((page, index) => {
-            if (!existingIds.has(page.id)) {
-                this.renderThumbnail(page, index);
-            }
+            if (!existingIds.has(page.id)) this.renderThumbnail(page, index);
         });
     }
 
     async renderThumbnail(pageData, index) {
         const item = document.createElement('div');
-        item.className = 'page-item';
+        item.className = 'page-item group relative cursor-pointer rounded-lg bg-white dark:bg-slate-700 shadow-sm border-2 border-transparent hover:-translate-y-1 hover:shadow-md transition-all overflow-hidden flex flex-col';
         item.dataset.id = pageData.id;
         
-        // HTML Structure
+        // Show badge if text exists
+        const hasText = pageData.textOverlays && pageData.textOverlays.length > 0;
+        const badgeHtml = hasText ? '<div class="text-badge absolute top-8 right-2 bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow z-10">T</div>' : '';
+
         item.innerHTML = `
-            <input type="checkbox" class="page-checkbox">
-            <div class="page-top-actions">
-                <button class="page-action-btn delete-page-btn" title="Delete">✕</button>
+            <div class="absolute top-2 left-2 z-10">
+                <input type="checkbox" class="page-checkbox w-4 h-4 cursor-pointer accent-indigo-600 rounded">
             </div>
-            <canvas class="page-canvas"></canvas>
-            <div class="page-info">${pageData.sourceFile.name} ${pageData.type === 'pdf' ? '#' + (pageData.sourcePageIndex + 1) : ''}</div>
-            <div class="page-bottom-actions">
-                <button class="page-action-btn rotate-ccw-btn">↶</button>
-                <input type="number" class="page-order-input" value="${index + 1}">
-                <button class="page-action-btn rotate-cw-btn">↷</button>
+            <div class="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button class="delete-page-btn w-6 h-6 bg-white/90 dark:bg-slate-800/90 text-red-500 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-sm">✕</button>
+            </div>
+            ${badgeHtml}
+            <div class="flex-1 bg-slate-200 dark:bg-slate-800 relative overflow-hidden flex items-center justify-center">
+                <canvas class="page-canvas max-w-full max-h-[300px] object-contain"></canvas>
+            </div>
+            <div class="px-2 py-2 bg-white dark:bg-slate-700 border-t border-slate-100 dark:border-slate-600 text-xs text-slate-500 dark:text-slate-400 truncate flex justify-between items-center h-10">
+                <span class="truncate max-w-[60%]">${pageData.sourceFile.name}</span>
+                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-2 right-2 bg-white/90 dark:bg-slate-700/90 p-1 rounded shadow-sm">
+                    <button class="rotate-ccw-btn w-5 h-5 flex items-center justify-center hover:text-indigo-600">↶</button>
+                    <input type="number" class="page-order-input w-8 h-5 text-center border border-slate-300 dark:border-slate-500 rounded text-[10px] bg-transparent" value="${index + 1}">
+                    <button class="rotate-cw-btn w-5 h-5 flex items-center justify-center hover:text-indigo-600">↷</button>
+                </div>
             </div>
         `;
         
-        // Checkbox listener
-        item.querySelector('.page-checkbox').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.toggleSelection(pageData.id);
-        });
-        
-        // Input listener (stop propagation)
+        item.querySelector('.page-checkbox').addEventListener('click', (e) => { e.stopPropagation(); this.toggleSelection(pageData.id); });
         item.querySelector('input[type="number"]').addEventListener('click', e => e.stopPropagation());
 
         this.pageGrid.appendChild(item);
         
-        // Render Content
+        // Render Canvas
         const canvas = item.querySelector('canvas');
         if (pageData.type === 'blank') {
             canvas.width = 200; canvas.height = 280;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = 'white'; ctx.fillRect(0,0,200,280);
-            ctx.strokeStyle = '#ddd'; ctx.strokeRect(0,0,200,280);
-            ctx.fillStyle = '#eee'; ctx.font = '20px sans-serif'; ctx.fillText('BLANK', 65, 140);
+            ctx.font = '20px sans-serif'; ctx.fillStyle = '#cbd5e1'; ctx.fillText('BLANK', 65, 140);
         } else if (pageData.type === 'image') {
             const img = new Image();
             img.src = URL.createObjectURL(pageData.sourceFile.file);
             img.onload = () => {
                 const aspect = img.height / img.width;
                 canvas.width = 200; canvas.height = 200 * aspect;
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                canvas.style.transform = `rotate(${pageData.rotation}deg)`;
+                const ctx = canvas.getContext('2d');
+                ctx.translate(canvas.width/2, canvas.height/2);
+                ctx.rotate((pageData.rotation * Math.PI) / 180);
+                // Adjust for rotation
+                if(pageData.rotation % 180 !== 0) {
+                     // Very simple drawing for thumb, not perfect rotation centering but enough for visual
+                     ctx.drawImage(img, -canvas.height/2, -canvas.width/2, canvas.height, canvas.width);
+                } else {
+                     ctx.drawImage(img, -canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+                }
             };
         } else if (pageData.type === 'pdf') {
             try {
                 const page = await pageData.sourceFile.pdfDoc.getPage(pageData.sourcePageIndex + 1);
-                const viewport = page.getViewport({ scale: 200 / page.getViewport({ scale: 1 }).width });
+                const viewport = page.getViewport({ scale: 200 / page.getViewport({ scale: 1 }).width, rotation: pageData.rotation });
                 canvas.width = viewport.width; canvas.height = viewport.height;
                 await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-                canvas.style.transform = `rotate(${pageData.rotation}deg)`;
             } catch(e) { console.error(e); }
         }
     }
@@ -358,13 +392,11 @@ class VisualPDFTool {
         const item = e.target.closest('.page-item');
         if (!item) return;
 
-        // Action Buttons
         if (e.target.closest('.delete-page-btn')) { this.deletePages([item.dataset.id]); return; }
         if (e.target.closest('.rotate-cw-btn')) { this.rotatePages([item.dataset.id], 90); return; }
         if (e.target.closest('.rotate-ccw-btn')) { this.rotatePages([item.dataset.id], -90); return; }
         if (e.target.closest('.page-order-input')) return;
 
-        // Selection Logic
         const id = item.dataset.id;
         if (e.shiftKey && this.lastSelectedId) {
             const allItems = [...this.pageGrid.children];
@@ -391,20 +423,27 @@ class VisualPDFTool {
     updateSelectionUI() {
         [...this.pageGrid.children].forEach(el => {
             const isSelected = this.selectedPageIds.has(el.dataset.id);
-            el.classList.toggle('selected', isSelected);
-            el.querySelector('.page-checkbox').checked = isSelected;
+            if (isSelected) {
+                el.classList.add('ring-4', 'ring-indigo-500/50', 'border-indigo-500');
+                el.classList.remove('border-transparent');
+                el.querySelector('.page-checkbox').checked = true;
+            } else {
+                el.classList.remove('ring-4', 'ring-indigo-500/50', 'border-indigo-500');
+                el.classList.add('border-transparent');
+                el.querySelector('.page-checkbox').checked = false;
+            }
         });
         const count = this.selectedPageIds.size;
         this.selectionCount.innerText = `${count} selected`;
-        this.contextualFooter.classList.toggle('visible', count > 0);
+        if(count > 0) this.contextualFooter.classList.remove('translate-y-full');
+        else this.contextualFooter.classList.add('translate-y-full');
     }
 
-    // --- ACTIONS ---
+    // --- ACTIONS (Delete, Rotate, Sort, Etc) ---
     deleteSelectedPages() {
         if (this.selectedPageIds.size === 0) return;
         this.deletePages(Array.from(this.selectedPageIds));
     }
-
     deletePages(ids) {
         this.saveState();
         this.pages = this.pages.filter(p => !ids.includes(p.id));
@@ -412,44 +451,37 @@ class VisualPDFTool {
         this.renderAllPages();
         this.updateStatus();
     }
-
     duplicateSelected() {
         if (this.selectedPageIds.size === 0) return;
         this.saveState();
-        
         const newPages = [];
-        // Loop through current pages to maintain order
         this.pages.forEach(page => {
             newPages.push(page);
             if (this.selectedPageIds.has(page.id)) {
-                // Create duplicate
-                const dupId = `page_${Date.now()}_dup_${Math.random().toString(36).substr(2,5)}`;
-                newPages.push({ ...page, id: dupId });
+                const dup = JSON.parse(JSON.stringify(page)); // Deep copy
+                dup.id = `page_${Date.now()}_dup_${Math.random().toString(36).substr(2,5)}`;
+                newPages.push(dup);
             }
         });
-        
         this.pages = newPages;
         this.renderAllPages();
         this.updateStatus();
     }
-
     rotateSelectedPages(angle) {
         if (this.selectedPageIds.size === 0) return;
         this.rotatePages(Array.from(this.selectedPageIds), angle);
     }
-
     rotatePages(ids, angle) {
         this.saveState();
         ids.forEach(id => {
             const page = this.pages.find(p => p.id === id);
             if (page) {
                 page.rotation = (page.rotation + angle + 360) % 360;
-                const el = this.pageGrid.querySelector(`.page-item[data-id="${id}"] .page-canvas`);
-                if(el) el.style.transform = `rotate(${page.rotation}deg)`;
+                // Re-rendering specific thumbnails is complex with rotation, easier to just update all for now or check rotation logic
+                this.renderAllPages(); 
             }
         });
     }
-
     sortByNumber() {
         this.saveState();
         const inputs = document.querySelectorAll('.page-order-input');
@@ -458,48 +490,31 @@ class VisualPDFTool {
             const id = input.closest('.page-item').dataset.id;
             map.set(id, parseInt(input.value) || 9999);
         });
-        
         this.pages.sort((a, b) => map.get(a.id) - map.get(b.id));
         this.renderAllPages();
     }
-
     updateDataOrderFromDOM() {
-        // Called after Drag & Drop
         const newOrderIds = [...this.pageGrid.children].map(el => el.dataset.id);
-        // We don't save state here because 'onStart' of Sortable already saved it
         const reordered = [];
-        newOrderIds.forEach(id => {
-            reordered.push(this.pages.find(p => p.id === id));
-        });
+        newOrderIds.forEach(id => reordered.push(this.pages.find(p => p.id === id)));
         this.pages = reordered;
-        
-        // Update input numbers
-        [...this.pageGrid.children].forEach((el, i) => {
-            el.querySelector('.page-order-input').value = i + 1;
-        });
+        [...this.pageGrid.children].forEach((el, i) => el.querySelector('.page-order-input').value = i + 1);
     }
-
     selectByRange() {
         const input = this.rangeInput.value.trim();
         if (!input) return;
-        
         this.selectedPageIds.clear();
         const parts = input.split(',');
         const total = this.pages.length;
-        
         parts.forEach(part => {
             if (part.includes('-')) {
                 const [start, end] = part.split('-').map(n => parseInt(n));
                 if (!isNaN(start) && !isNaN(end)) {
-                    for (let i = start; i <= end; i++) {
-                        if (i > 0 && i <= total) this.selectedPageIds.add(this.pages[i-1].id);
-                    }
+                    for (let i = start; i <= end; i++) if (i > 0 && i <= total) this.selectedPageIds.add(this.pages[i-1].id);
                 }
             } else {
                 const num = parseInt(part);
-                if (!isNaN(num) && num > 0 && num <= total) {
-                    this.selectedPageIds.add(this.pages[num-1].id);
-                }
+                if (!isNaN(num) && num > 0 && num <= total) this.selectedPageIds.add(this.pages[num-1].id);
             }
         });
         this.updateSelectionUI();
@@ -509,46 +524,54 @@ class VisualPDFTool {
     async openPreviewModal(pageId) {
         const page = this.pages.find(p => p.id === pageId);
         if(!page) return;
-        
         this.previewModal.classList.remove('hidden');
         const canvas = document.getElementById('preview-canvas');
-        const meta = document.getElementById('preview-meta');
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        
-        meta.innerText = `${page.sourceFile.name} - Page ${page.sourcePageIndex + 1}`;
+        const container = document.querySelector('.modal-body');
+        document.getElementById('preview-meta').innerText = `${page.sourceFile.name} - Page ${page.sourcePageIndex + 1}`;
 
+        // Simple render logic for preview (ignoring text overlay for simplicity in preview, text appears on export)
         if(page.type === 'blank') {
             canvas.width = 400; canvas.height = 560;
             ctx.fillStyle = 'white'; ctx.fillRect(0,0,400,560);
-            ctx.font = '30px sans-serif'; ctx.fillStyle = '#ccc'; ctx.fillText('BLANK PAGE', 100, 280);
+            ctx.font = '30px sans-serif'; ctx.fillStyle = '#ccc'; ctx.fillText('BLANK', 100, 280);
         } else if (page.type === 'image') {
             const img = new Image();
             img.src = URL.createObjectURL(page.sourceFile.file);
             img.onload = () => {
-                canvas.width = img.width; canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
+                const maxWidth = container.clientWidth - 40;
+                const maxHeight = container.clientHeight - 40;
+                const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+                canvas.width = img.width * scale; canvas.height = img.height * scale;
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             };
         } else {
-            // High res PDF render
             const pdfPage = await page.sourceFile.pdfDoc.getPage(page.sourcePageIndex + 1);
-            const viewport = pdfPage.getViewport({ scale: 1.5, rotation: page.rotation });
+            const rawViewport = pdfPage.getViewport({ scale: 1, rotation: page.rotation });
+            const maxWidth = container.clientWidth - 40;
+            const maxHeight = container.clientHeight - 40;
+            const scale = Math.min(maxWidth / rawViewport.width, maxHeight / rawViewport.height);
+            const viewport = pdfPage.getViewport({ scale: scale, rotation: page.rotation });
             canvas.width = viewport.width; canvas.height = viewport.height;
             await pdfPage.render({ canvasContext: ctx, viewport }).promise;
         }
     }
 
-    // --- EXPORT ---
+    // --- EXPORT PDF (With Text) ---
     async createPdf(isPreview = false) {
         if(this.pages.length === 0) return;
         this.showLoader(true, 'Generating PDF...');
         
         try {
             const newDoc = await PDFLib.PDFDocument.create();
+            // Embed font for text
+            const helveticaFont = await newDoc.embedFont(PDFLib.StandardFonts.Helvetica);
             
             for(const p of this.pages) {
+                let page;
+                
                 if(p.type === 'blank') {
-                    newDoc.addPage([595, 842]); // A4 size
+                    page = newDoc.addPage([595, 842]);
                 } 
                 else if (p.type === 'image') {
                     const imgBytes = await p.sourceFile.file.arrayBuffer();
@@ -557,21 +580,49 @@ class VisualPDFTool {
                     else embedded = await newDoc.embedJpg(imgBytes);
                     
                     const { width, height } = embedded;
-                    const page = newDoc.addPage([width, height]);
+                    page = newDoc.addPage([width, height]); // Simplified page sizing for image
                     
-                    // Logic to draw image with rotation
-                    const rad = (p.rotation * Math.PI) / 180;
-                    page.drawImage(embedded, {
-                        x: p.rotation === 90 ? width : (p.rotation === 180 ? width : 0),
-                        y: p.rotation === 270 ? height : (p.rotation === 180 ? height : 0),
-                        width: width, height: height,
-                        rotate: PDFLib.degrees(p.rotation)
-                    });
+                    // Rotation handling for images in PDF-lib is tricky, simplified here:
+                    if (p.rotation === 0) page.drawImage(embedded, {x:0, y:0, width, height});
+                    else {
+                        page.setRotation(PDFLib.degrees(p.rotation));
+                        if(p.rotation === 90) page.drawImage(embedded, {x:0, y:-height, width, height}); // Basic offset logic
+                        else if (p.rotation === 180) page.drawImage(embedded, {x:-width, y:-height, width, height});
+                        // Note: Robust image rotation usually requires calculating new page dimensions.
+                        // For this demo, we assume user accepts basic rotation.
+                    }
                 } 
                 else {
                     const [copied] = await newDoc.copyPages(p.sourceFile.pdfLibDoc, [p.sourcePageIndex]);
                     copied.setRotation(PDFLib.degrees((copied.getRotation().angle + p.rotation) % 360));
-                    newDoc.addPage(copied);
+                    page = newDoc.addPage(copied);
+                }
+
+                // --- DRAW TEXT OVERLAYS ---
+                if (p.textOverlays && p.textOverlays.length > 0) {
+                    const { width, height } = page.getSize();
+                    p.textOverlays.forEach(txt => {
+                        const rgb = this.hexToRgb(txt.color);
+                        const textWidth = helveticaFont.widthOfTextAtSize(txt.text, txt.size);
+                        let x = 50, y = 50;
+
+                        // Position Logic
+                        if (txt.position.includes('top')) y = height - 50;
+                        if (txt.position.includes('bottom')) y = 50;
+                        if (txt.position === 'center') y = height / 2;
+                        
+                        if (txt.position.includes('left')) x = 50;
+                        if (txt.position.includes('center')) x = (width - textWidth) / 2;
+                        if (txt.position.includes('right')) x = width - textWidth - 50;
+
+                        page.drawText(txt.text, {
+                            x: x,
+                            y: y,
+                            size: txt.size,
+                            font: helveticaFont,
+                            color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                        });
+                    });
                 }
             }
 
@@ -591,28 +642,38 @@ class VisualPDFTool {
             }
         } catch(e) {
             console.error(e);
-            alert('Error generating PDF');
+            alert('Error generating PDF: ' + e.message);
         } finally {
             this.showLoader(false);
         }
+    }
+
+    // Helper
+    hexToRgb(hex) {
+        const r = parseInt(hex.substr(1, 2), 16) / 255;
+        const g = parseInt(hex.substr(3, 2), 16) / 255;
+        const b = parseInt(hex.substr(5, 2), 16) / 255;
+        return { r, g, b };
     }
     
     // --- UTILS ---
     selectAll() { this.pages.forEach(p => this.selectedPageIds.add(p.id)); this.updateSelectionUI(); }
     deselectAll() { this.selectedPageIds.clear(); this.lastSelectedId = null; this.updateSelectionUI(); }
-    toggleSidebar(show) { this.appContainer.classList.toggle('sidebar-mobile-open', show); document.getElementById('sidebar-overlay').classList.toggle('hidden', !show); }
+    toggleSidebar(show) { this.appContainer.classList.toggle('sidebar-mobile-open', show); document.getElementById('sidebar-overlay').classList.toggle('hidden', !show); 
+         if(show) document.getElementById('sidebar').classList.remove('-translate-x-full');
+         else document.getElementById('sidebar').classList.add('-translate-x-full');
+    }
     toggleDarkMode() { 
-        document.body.classList.toggle('dark-mode'); 
-        document.querySelector('.moon-icon').classList.toggle('hidden');
-        document.querySelector('.sun-icon').classList.toggle('hidden');
+        document.documentElement.classList.toggle('dark');
+        // Need to update drag over styles or canvas backgrounds if dependent on class
     }
     checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) this.toggleDarkMode(); }
     
     updateSourceFileList() {
         const el = document.getElementById('sourceFileList');
         const used = new Set(this.pages.map(p => p.sourceFile.id));
-        const files = this.sourceFiles.filter(f => used.has(f.id) || f.type === 'blank'); // Keep used files
-        el.innerHTML = files.map(f => `<div class="source-file-item">${f.name}</div>`).join('');
+        const files = this.sourceFiles.filter(f => used.has(f.id) || f.type === 'blank');
+        el.innerHTML = files.map(f => `<div class="p-2 text-xs bg-slate-100 dark:bg-slate-700 rounded mb-1 truncate">${f.name}</div>`).join('');
     }
 
     updateStatus() {
