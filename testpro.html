@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual PDF Editor Pro (Ultimate + Rich Text)</title>
+    <title>Visual PDF Editor Pro (Perfect Scale)</title>
 
     <!-- LOCAL LIBRARIES -->
     <script src="js/pdf-lib.min.js"></script>
@@ -37,10 +37,9 @@
         .sortable-ghost { opacity: 0.4; background: #e0e7ff; border: 2px dashed #6366f1; }
         .sortable-drag { cursor: grabbing; opacity: 1 !important; background: white; transform: scale(1.05); z-index: 50; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.2); }
         
-        /* Layout */
+        /* Layout & Scroll */
         #contextual-footer { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; }
         #contextual-footer.hidden-island { transform: translate(-50%, 200%); opacity: 0; pointer-events: none; }
-        .marquee-box { position: absolute; border: 1px solid #6366f1; background-color: rgba(99, 102, 241, 0.1); z-index: 50; pointer-events: none; }
         
         :root { --grid-size: 180px; }
         .view-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); gap: 1.5rem; }
@@ -49,20 +48,17 @@
         .view-list .canvas-wrapper { width: 60px; height: 100%; margin-right: 1rem; flex-shrink: 0; }
         .view-list .page-info { border: none; flex: 1; text-align: left; }
         
-        /* Skeleton */
-        .skeleton-shimmer { background: #f1f5f9; position: relative; overflow: hidden; }
-        .skeleton-shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: shimmer 1.5s infinite; }
-        .dark .skeleton-shimmer { background: #334155; }
-        .dark .skeleton-shimmer::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); }
-        
+        /* Custom Scrollbar */
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
 
         /* EDITOR OVERLAY */
+        /* Note: We force CSS to respect the transform origin for accurate text scaling */
         .draggable-text { 
             position: absolute; cursor: move; user-select: none; white-space: pre; 
             border: 1px dashed transparent; padding: 4px; line-height: 1.2; 
+            transform-origin: center center;
         }
         .draggable-text:hover { border-color: rgba(99, 102, 241, 0.5); }
         .draggable-text.active { 
@@ -70,15 +66,14 @@
             background: rgba(255, 255, 255, 0.1); 
             box-shadow: 0 0 0 1px white, 0 4px 6px rgba(0,0,0,0.1);
         }
-        /* Style buttons active state */
         .style-btn.active { background-color: #e0e7ff; color: #4338ca; border-color: #6366f1; }
         .dark .style-btn.active { background-color: #3730a3; color: white; border-color: #818cf8; }
-
-        [data-tooltip]:hover::after {
-            content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-            padding: 4px 8px; background: #1e293b; color: white; font-size: 10px; border-radius: 4px;
-            white-space: nowrap; z-index: 60; margin-bottom: 6px; pointer-events: none;
-        }
+        
+        /* Skeleton */
+        .skeleton-shimmer { background: #f1f5f9; position: relative; overflow: hidden; }
+        .skeleton-shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: shimmer 1.5s infinite; }
+        .dark .skeleton-shimmer { background: #334155; }
+        .dark .skeleton-shimmer::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 h-full overflow-hidden transition-colors duration-200">
@@ -107,7 +102,7 @@
                     HIPAA Ready: 100% Local
                 </div>
                 <h1 class="text-4xl font-bold mb-4 tracking-tight">Visual PDF Editor <span class="text-indigo-400">Pro</span></h1>
-                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit documents. Add bold text, watermarks, and metadata.</p>
+                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit medical documents locally.</p>
                 <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg">
                     <p class="text-sm">⚠️ Previous session found.</p>
                     <button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button>
@@ -135,14 +130,9 @@
                     <button id="sidebar-close-btn" class="md:hidden text-slate-400 hover:text-slate-700">✕</button>
                 </div>
             </div>
-            
             <div id="sourceFileList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll">
-                <div id="empty-source-state" class="text-center py-10 opacity-50">
-                    <div class="text-4xl mb-2">📂</div>
-                    <p class="text-xs">No files added</p>
-                </div>
+                <div id="empty-source-state" class="text-center py-10 opacity-50"><div class="text-4xl mb-2">📂</div><p class="text-xs">No files added</p></div>
             </div>
-            
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3">
                 <button id="insertBlankBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group">
                     <span class="text-indigo-500 font-bold group-hover:scale-110 transition">+</span> Insert Blank Page
@@ -161,47 +151,32 @@
             <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm z-30 px-4 py-3 flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex items-center gap-4">
                     <button id="menu-toggle-btn" class="md:hidden text-slate-500 p-2 hover:bg-slate-100 rounded">☰</button>
-                    <!-- VIEW TOGGLES -->
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-                        <button id="viewGridBtn" class="p-1.5 rounded bg-white dark:bg-slate-600 shadow-sm text-indigo-600" data-tooltip="Grid View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
-                        <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500" data-tooltip="List View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
+                        <button id="viewGridBtn" class="p-1.5 rounded bg-white dark:bg-slate-600 shadow-sm text-indigo-600"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
+                        <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
                     </div>
-                    <!-- UNDO/REDO -->
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-                        <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300" data-tooltip="Undo (Ctrl+Z)"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></button>
-                        <button id="redoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300" data-tooltip="Redo (Ctrl+Y)"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg></button>
+                        <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></button>
+                        <button id="redoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg></button>
                     </div>
-                    <div class="hidden sm:flex items-center gap-2">
-                        <input type="range" id="zoomSlider" min="100" max="300" value="180" class="w-24 h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                    </div>
+                    <div class="hidden sm:flex items-center gap-2"><input type="range" id="zoomSlider" min="100" max="300" value="180" class="w-24 h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-indigo-600"></div>
                     <span id="auto-save-indicator" class="text-xs text-emerald-500 font-medium opacity-0 transition-opacity">Saved ✓</span>
                 </div>
-
                 <div class="flex items-center gap-3">
-                    <button id="sortByNumberBtn" class="text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 transition">Sort #</button>
-                    <button id="clearBtn" class="text-xs font-bold px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded transition">Clear</button>
-                    <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
-                    <div class="flex items-center gap-1 text-sm bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1">
-                        <input type="text" id="filenameInput" value="document" class="bg-transparent border-none outline-none w-24 text-right">
-                        <span class="text-slate-400">.pdf</span>
-                    </div>
-                    <button id="darkModeToggle" class="p-2 text-slate-400 hover:text-indigo-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg></button>
-                    <button id="addFilesBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-1.5 px-4 rounded shadow-md transition hover:-translate-y-0.5 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add</button>
+                    <button id="sortByNumberBtn" class="text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded">Sort #</button>
+                    <button id="clearBtn" class="text-xs font-bold px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded">Clear</button>
+                    <div class="flex items-center gap-1 text-sm bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1"><input type="text" id="filenameInput" value="document" class="bg-transparent border-none outline-none w-24 text-right"><span class="text-slate-400">.pdf</span></div>
+                    <button id="darkModeToggle" class="p-2 text-slate-400 hover:text-indigo-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg></button>
+                    <button id="addFilesBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-1.5 px-4 rounded shadow-md flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add</button>
                     <input type="file" id="fileInput" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png">
                 </div>
             </header>
 
             <div id="page-grid-container" class="flex-1 overflow-y-auto p-8 relative custom-scroll">
                 <div id="page-grid" class="view-grid pb-32"></div>
-                <!-- Empty State for Grid -->
-                <div id="empty-grid-state" class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-50">
-                    <div class="text-6xl mb-4">📄</div>
-                    <p class="text-xl font-light">Workspace is empty</p>
-                    <p class="text-sm">Add files to get started</p>
-                </div>
+                <div id="empty-grid-state" class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-50"><div class="text-6xl mb-4">📄</div><p class="text-xl font-light">Workspace is empty</p></div>
             </div>
 
-            <!-- CONTEXTUAL FOOTER -->
             <footer id="contextual-footer" class="fixed bottom-8 left-1/2 -translate-x-1/2 hidden-island z-40 bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 backdrop-blur-md rounded-full shadow-2xl px-6 py-3 flex items-center gap-6 border border-slate-700 dark:border-slate-200 transition-all duration-300">
                 <div class="flex items-center gap-3 text-sm font-medium border-r border-slate-600 dark:border-slate-300 pr-6">
                     <span id="selection-count">0 selected</span>
@@ -210,27 +185,19 @@
                     <button id="deselectAllBtn" class="hover:text-slate-300 dark:hover:text-slate-600 underline decoration-dotted">None</button>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="duplicateSelectedBtn" class="p-2 hover:bg-white/10 dark:hover:bg-slate-200 rounded-full transition" data-tooltip="Duplicate"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                    <button id="rotateSelectedBtn" class="p-2 hover:bg-white/10 dark:hover:bg-slate-200 rounded-full transition" data-tooltip="Rotate"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></button>
-                    <button id="deleteSelectedBtn" class="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 dark:text-red-600 dark:hover:text-red-700 rounded-full transition" data-tooltip="Delete"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    <button id="duplicateSelectedBtn" class="p-2 hover:bg-white/10 dark:hover:bg-slate-200 rounded-full transition" title="Duplicate"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                    <button id="rotateSelectedBtn" class="p-2 hover:bg-white/10 dark:hover:bg-slate-200 rounded-full transition" title="Rotate"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></button>
+                    <button id="deleteSelectedBtn" class="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 dark:text-red-600 dark:hover:text-red-700 rounded-full transition" title="Delete"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                 </div>
                 <div class="h-6 w-px bg-slate-600 dark:bg-slate-300"></div>
-                
-                <!-- EXPORT DROPDOWN -->
                 <div class="relative group">
-                    <button class="bg-indigo-500 hover:bg-indigo-600 text-white pl-5 pr-3 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">
-                        Export PDF <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </button>
+                    <button class="bg-indigo-500 hover:bg-indigo-600 text-white pl-5 pr-3 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">Export PDF <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
                     <div class="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden hidden group-hover:block text-left">
-                        <button id="saveBtn" class="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>💾</span> Save File</button>
-                        <button id="printBtn" class="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>🖨</span> Print</button>
-                        <button id="previewBtn" class="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>👁</span> Preview</button>
+                        <button id="saveBtn" class="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>💾</span> Save File</button>
+                        <button id="printBtn" class="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>🖨</span> Print</button>
+                        <button id="previewBtn" class="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>👁</span> Preview</button>
                         <div class="h-px bg-slate-200 dark:bg-slate-700"></div>
-                        <div class="px-4 py-2">
-                            <label class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
-                                <input type="checkbox" id="addPageNumbersCheckbox" class="rounded text-indigo-600 focus:ring-indigo-500"> Add Page # (Footer)
-                            </label>
-                        </div>
+                        <div class="px-4 py-2"><label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" id="addPageNumbersCheckbox" class="rounded text-indigo-600"> Add Page # (Footer)</label></div>
                     </div>
                 </div>
             </footer>
@@ -250,7 +217,7 @@
         </div>
     </div>
 
-    <!-- TEXT EDITOR MODAL (RICH TEXT) -->
+    <!-- TEXT EDITOR MODAL -->
     <div id="text-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
         <div class="bg-white dark:bg-slate-800 w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300">
             <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex justify-between items-center shrink-0">
@@ -270,26 +237,24 @@
                         </div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Quick Positioning</label>
                         <div class="grid grid-cols-3 gap-2">
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="tl">↖</button>
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="tc">↑</button>
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="tr">↗</button>
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="cl">←</button>
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="cc">●</button>
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="cr">→</button>
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="bl">↙</button>
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="bc">↓</button>
-                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700" data-pos="br">↘</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="tl">↖</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="tc">↑</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="tr">↗</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="cl">←</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="cc">●</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="cr">→</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="bl">↙</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="bc">↓</button>
+                            <button class="pos-btn p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50" data-pos="br">↘</button>
                         </div>
                     </div>
-
                     <!-- TEXT CONTROLS -->
                     <div class="space-y-4 flex-1">
                         <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
                             <label class="block text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2">ADD TEXT</label>
-                            <!-- RICH TEXT TOOLBAR -->
                             <div class="flex gap-2 mb-2">
-                                <button id="txt-bold-btn" class="style-btn w-8 h-8 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-700" title="Bold">B</button>
-                                <button id="txt-italic-btn" class="style-btn w-8 h-8 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 italic font-serif hover:bg-slate-100 dark:hover:bg-slate-700" title="Italic">I</button>
+                                <button id="txt-bold-btn" class="style-btn w-8 h-8 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-bold hover:bg-slate-100" title="Bold">B</button>
+                                <button id="txt-italic-btn" class="style-btn w-8 h-8 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 italic font-serif hover:bg-slate-100" title="Italic">I</button>
                             </div>
                             <textarea id="txt-content" placeholder="Type text here..." class="w-full h-16 text-sm p-3 rounded-lg border-0 focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 mb-2 resize-none shadow-sm"></textarea>
                             <button id="addTextLayerBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium shadow-sm transition">Add Text Layer</button>
@@ -310,17 +275,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="flex-1 bg-slate-200 dark:bg-slate-950 flex items-center justify-center p-8 overflow-hidden relative">
+                <div id="preview-container-parent" class="flex-1 bg-slate-200 dark:bg-slate-950 flex items-center justify-center p-8 overflow-hidden relative">
+                    <!-- Preview wrapper sizing is now handled via JS for perfect fit -->
                     <div id="preview-wrapper" class="relative shadow-2xl transition-transform duration-200 ease-out origin-center bg-white"><canvas id="modal-bg-canvas" class="block"></canvas><div id="overlay-container" class="absolute inset-0"></div></div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- LOADER -->
-    <div id="loader" class="fixed inset-0 z-[100] bg-white/90 dark:bg-slate-900/90 flex flex-col items-center justify-center hidden backdrop-blur-sm">
-        <div class="w-12 h-12 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-        <p id="loader-text" class="text-slate-600 dark:text-slate-300 font-medium animate-pulse">Processing...</p>
     </div>
 
     <script>
@@ -434,26 +394,128 @@
             this.textModal.classList.remove('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.remove('scale-95');
             await this.renderEditorCanvas(); this.renderOverlayLayers();
         }
+        
         async renderEditorCanvas() {
-            const page = this.pages.find(p => p.id === this.editingPageId); const canvas = document.getElementById('modal-bg-canvas'); const ctx = canvas.getContext('2d');
-            const containerHeight = 600; const dpr = window.devicePixelRatio || 1; canvas.style.transform = `rotate(${this.tempRotation}deg)`;
-            if (page.type === 'blank') { canvas.width = 420*dpr; canvas.height = 600*dpr; canvas.style.width="420px"; canvas.style.height="600px"; ctx.scale(dpr,dpr); ctx.fillStyle='white'; ctx.fillRect(0,0,420,600); } 
-            else if (page.type === 'image') { const img = new Image(); const url = URL.createObjectURL(page.sourceFile.file); img.src = url; await new Promise(r => img.onload = r); const ratio = img.height / img.width; canvas.width = (containerHeight/ratio)*dpr; canvas.height = containerHeight*dpr; canvas.style.width=`${containerHeight/ratio}px`; canvas.style.height=`${containerHeight}px`; ctx.scale(dpr,dpr); ctx.drawImage(img, 0, 0, containerHeight/ratio, containerHeight); URL.revokeObjectURL(url); } 
-            else { const pdfPage = await page.sourceFile.pdfDoc.getPage(page.sourcePageIndex + 1); const viewport = pdfPage.getViewport({ scale: 2 }); const scaleFactor = containerHeight / viewport.height; canvas.width = viewport.width * scaleFactor * dpr; canvas.height = containerHeight * dpr; canvas.style.width = `${viewport.width * scaleFactor}px`; canvas.style.height = `${containerHeight}px`; await pdfPage.render({ canvasContext: ctx, viewport: pdfPage.getViewport({ scale: 2 * scaleFactor * dpr }) }).promise; }
+            const page = this.pages.find(p => p.id === this.editingPageId);
+            const canvas = document.getElementById('modal-bg-canvas');
+            const wrapper = document.getElementById('preview-wrapper');
+            const container = document.getElementById('preview-container-parent');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+
+            // 1. Determine Natural Dimensions
+            let natWidth, natHeight;
+            let imgBitmap = null;
+            let pdfPageProxy = null;
+
+            if (page.type === 'blank') { natWidth = 595; natHeight = 842; } 
+            else if (page.type === 'image') {
+                const url = URL.createObjectURL(page.sourceFile.file);
+                const img = new Image(); img.src = url;
+                await new Promise(r => img.onload = r);
+                natWidth = img.width; natHeight = img.height; imgBitmap = img;
+                URL.revokeObjectURL(url);
+            } 
+            else {
+                pdfPageProxy = await page.sourceFile.pdfDoc.getPage(page.sourcePageIndex + 1);
+                const vp = pdfPageProxy.getViewport({ scale: 1 });
+                natWidth = vp.width; natHeight = vp.height;
+            }
+
+            // 2. Handle Rotation Logic (Swap dimensions if rotated)
+            // Apply rotation from the main grid + local editor rotation
+            const totalRotation = (this.tempRotation) % 360;
+            const isRotated = (totalRotation === 90 || totalRotation === 270);
+            
+            // The canvas display dimensions depend on rotation
+            const displayWidth = isRotated ? natHeight : natWidth;
+            const displayHeight = isRotated ? natWidth : natHeight;
+
+            // 3. Calculate "Fit to Screen" Scale
+            // Available space in modal
+            const availW = container.clientWidth - 40; 
+            const availH = container.clientHeight - 40; 
+            
+            // Scale factor to fit inside available space (Contain)
+            const scale = Math.min(availW / displayWidth, availH / displayHeight);
+            
+            // Final Display Size
+            const finalW = displayWidth * scale;
+            const finalH = displayHeight * scale;
+
+            // 4. Set Wrapper Size (Coordinate System Basis)
+            wrapper.style.width = `${finalW}px`;
+            wrapper.style.height = `${finalH}px`;
+
+            // 5. Draw High-Res Canvas
+            // Canvas internal pixels are high res, styled to fit wrapper
+            canvas.width = finalW * dpr;
+            canvas.height = finalH * dpr;
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+            
+            ctx.scale(dpr, dpr);
+            
+            // Draw Logic
+            ctx.save();
+            ctx.translate(finalW/2, finalH/2);
+            ctx.rotate((totalRotation * Math.PI) / 180);
+            
+            // Draw content centered at origin
+            if (page.type === 'blank') {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(-natWidth*scale/2, -natHeight*scale/2, natWidth*scale, natHeight*scale);
+            } else if (page.type === 'image') {
+                ctx.drawImage(imgBitmap, -natWidth*scale/2, -natHeight*scale/2, natWidth*scale, natHeight*scale);
+            } else {
+                // PDF Render needs exact viewport match
+                // We render strictly to the scaled size
+                const renderVp = pdfPageProxy.getViewport({ scale: scale });
+                // We must untranslate/unrotate because PDFJS handles rotation internally if we ask it to,
+                // BUT we are doing manual rotation via context. 
+                // Easier approach for PDFJS: Reset context, render flat, let PDFJS handle rotation if baked in file.
+                // However, user-added rotation needs manual handling.
+                // Simplest: Draw to temp canvas, then draw temp canvas here.
+                // Or: Just use the fact we are rotated.
+                ctx.restore(); // Reset to top-left
+                // Complex PDF rotation handling:
+                // If we want visual rotation, we use CSS on wrapper? No, wrapper is fixed.
+                // We must rotate the context.
+                ctx.save();
+                ctx.translate(finalW/2, finalH/2);
+                ctx.rotate((totalRotation * Math.PI) / 180);
+                ctx.translate(-natWidth*scale/2, -natHeight*scale/2);
+                
+                // Render PDF to this context
+                const renderContext = { canvasContext: ctx, viewport: renderVp };
+                await pdfPageProxy.render(renderContext).promise;
+                ctx.restore();
+            }
+            if(page.type !== 'pdf') ctx.restore(); // pdf handles its own restore logic above
         }
+
         renderOverlayLayers() {
-            const container = document.getElementById('overlay-container'); const canvas = document.getElementById('modal-bg-canvas'); container.innerHTML = '';
-            container.style.width = canvas.style.width; container.style.height = canvas.style.height; container.style.transform = `rotate(${this.tempRotation}deg)`;
-            container.style.margin = 'auto'; container.style.position = 'absolute'; container.style.left='0'; container.style.right='0'; container.style.top='0'; container.style.bottom='0';
+            const container = document.getElementById('overlay-container');
+            container.innerHTML = '';
+            // No transforms needed on container because wrapper is already sized to the visual page
+            
             this.tempTextOverlays.forEach((txt, index) => {
                 const el = document.createElement('div'); el.className = 'draggable-text'; if(index === this.activeTextIndex) el.classList.add('active'); el.innerText = txt.text;
-                el.style.left = `${txt.xPercent}%`; el.style.top = `${txt.yPercent}%`; el.style.fontSize = `${txt.size}px`; el.style.color = txt.color; el.style.opacity = txt.opacity;
+                // Position is % of the wrapper (which matches PDF aspect ratio)
+                el.style.left = `${txt.xPercent}%`; el.style.top = `${txt.yPercent}%`; 
+                // Scale font size visually? We keep it raw pixels for simplicity, but map it during PDF export.
+                // Actually, to make it WYSIWYG, we need to scale font size relative to wrapper height vs PDF height.
+                // For now, simpler: Visual size = raw px. 
+                el.style.fontSize = `${txt.size}px`; 
+                el.style.color = txt.color; el.style.opacity = txt.opacity;
                 el.style.transform = `translate(-50%, -50%) rotate(${txt.rotation}deg)`; 
                 el.style.fontFamily = txt.font === 'TimesRoman' ? 'serif' : (txt.font === 'Courier' ? 'monospace' : 'sans-serif');
                 if(txt.isBold) el.style.fontWeight = 'bold'; if(txt.isItalic) el.style.fontStyle = 'italic';
                 if(txt.hasShadow) el.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
                 el.addEventListener('mousedown', e => { e.stopPropagation(); this.setActiveLayer(index); this.startDrag(e, index, container); }); container.appendChild(el);
             });
+            
+            // Update Controls
             const controls = document.getElementById('layer-controls');
             if(this.activeTextIndex > -1) {
                 controls.classList.remove('hidden', 'opacity-50', 'pointer-events-none'); const l = this.tempTextOverlays[this.activeTextIndex];
@@ -463,107 +525,51 @@
                 document.getElementById('txt-italic-btn').classList.toggle('active', !!l.isItalic);
             } else { controls.classList.add('opacity-50', 'pointer-events-none'); }
         }
-        addTextLayerToEditor() { const text = document.getElementById('txt-content').value || "New Text"; this.tempTextOverlays.push({ text, xPercent: 50, yPercent: 50, size: 24, color: '#000000', opacity: 1, rotation: 0, font: 'Helvetica', isBold: false, isItalic: false, hasShadow: false }); this.activeTextIndex = this.tempTextOverlays.length - 1; this.renderOverlayLayers(); }
         
-        // --- STAMP & PRESET HELPERS ---
+        // --- TEXT HELPERS ---
+        addTextLayerToEditor() { const text = document.getElementById('txt-content').value || "New Text"; this.tempTextOverlays.push({ text, xPercent: 50, yPercent: 50, size: 24, color: '#000000', opacity: 1, rotation: 0, font: 'Helvetica', isBold: false, isItalic: false, hasShadow: false }); this.activeTextIndex = this.tempTextOverlays.length - 1; this.renderOverlayLayers(); }
         addStamp(text, color) { this.tempTextOverlays.push({ text: text, xPercent: 50, yPercent: 50, size: 60, color: color, opacity: 0.3, rotation: 45, font: 'Helvetica', isBold: true, isItalic: false }); this.activeTextIndex = this.tempTextOverlays.length - 1; this.renderOverlayLayers(); }
-        setTextPosition(pos) { if(this.activeTextIndex === -1) return; const l = this.tempTextOverlays[this.activeTextIndex]; 
-            const m = 10; if(pos.includes('l')) l.xPercent = m; if(pos.includes('r')) l.xPercent = 100-m; if(pos.includes('c') && pos[0] !== 'c') l.xPercent=50; else if(pos=='cc') l.xPercent=50;
-            if(pos.includes('t')) l.yPercent = m; if(pos.includes('b')) l.yPercent = 100-m; if(pos.includes('c') && pos[1] !== 'c') l.yPercent=50; else if(pos=='cc') l.yPercent=50;
-            this.renderOverlayLayers();
-        }
+        setTextPosition(pos) { if(this.activeTextIndex === -1) return; const l = this.tempTextOverlays[this.activeTextIndex]; const m = 10; if(pos.includes('l')) l.xPercent = m; if(pos.includes('r')) l.xPercent = 100-m; if(pos.includes('c') && pos[0] !== 'c') l.xPercent=50; else if(pos=='cc') l.xPercent=50; if(pos.includes('t')) l.yPercent = m; if(pos.includes('b')) l.yPercent = 100-m; if(pos.includes('c') && pos[1] !== 'c') l.yPercent=50; else if(pos=='cc') l.yPercent=50; this.renderOverlayLayers(); }
         toggleBold() { if(this.activeTextIndex > -1) { this.tempTextOverlays[this.activeTextIndex].isBold = !this.tempTextOverlays[this.activeTextIndex].isBold; this.renderOverlayLayers(); } }
         toggleItalic() { if(this.activeTextIndex > -1) { this.tempTextOverlays[this.activeTextIndex].isItalic = !this.tempTextOverlays[this.activeTextIndex].isItalic; this.renderOverlayLayers(); } }
         toggleShadow() { if(this.activeTextIndex > -1) { this.tempTextOverlays[this.activeTextIndex].hasShadow = !this.tempTextOverlays[this.activeTextIndex].hasShadow; this.renderOverlayLayers(); } }
-
         setActiveLayer(index) { this.activeTextIndex = index; this.renderOverlayLayers(); }
         deleteActiveLayer() { if(this.activeTextIndex > -1) { this.tempTextOverlays.splice(this.activeTextIndex, 1); this.activeTextIndex = -1; this.renderOverlayLayers(); } }
         updateActiveTextLayer() { if(this.activeTextIndex === -1) return; const l = this.tempTextOverlays[this.activeTextIndex]; l.text = document.getElementById('txt-content').value; l.size = parseInt(document.getElementById('txt-size').value); l.color = document.getElementById('txt-color').value; l.font = document.getElementById('txt-font').value; l.rotation = parseInt(document.getElementById('txt-rotation').value); l.opacity = parseFloat(document.getElementById('txt-opacity').value); this.renderOverlayLayers(); }
         editorRotate(deg) { this.tempRotation = (this.tempRotation + deg) % 360; this.renderEditorCanvas(); this.renderOverlayLayers(); }
-        startDrag(e, index, container) { let isDragging = true; const rect = container.getBoundingClientRect(); const moveHandler = (ev) => { if(!isDragging) return; const x = ev.clientX - rect.left; const y = ev.clientY - rect.top; this.tempTextOverlays[index].xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100)); this.tempTextOverlays[index].yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100)); this.renderOverlayLayers(); }; const upHandler = () => { isDragging = false; document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', upHandler); }; document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', upHandler); }
-        savePageEdits() { this.saveState(); const page = this.pages.find(p => p.id === this.editingPageId); page.textOverlays = JSON.parse(JSON.stringify(this.tempTextOverlays)); page.rotation = this.tempRotation; this.showToast("Changes saved"); this.renderAllPages(); this.textModal.classList.add('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.add('scale-95'); }
+        
+        startDrag(e, index, container) { 
+            let isDragging = true; 
+            const rect = container.getBoundingClientRect(); 
+            const moveHandler = (ev) => { 
+                if(!isDragging) return; 
+                // Calculate percentage relative to the wrapper size
+                const x = ev.clientX - rect.left; 
+                const y = ev.clientY - rect.top; 
+                this.tempTextOverlays[index].xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100)); 
+                this.tempTextOverlays[index].yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100)); 
+                this.renderOverlayLayers(); 
+            }; 
+            const upHandler = () => { isDragging = false; document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', upHandler); }; 
+            document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', upHandler); 
+        }
+        
+        // BUG FIX: Added safety check
+        savePageEdits() { 
+            if (!this.editingPageId) return;
+            const page = this.pages.find(p => p.id === this.editingPageId); 
+            if (!page) { this.showToast("Error saving: Page not found", "error"); return; }
+            page.textOverlays = JSON.parse(JSON.stringify(this.tempTextOverlays)); 
+            page.rotation = this.tempRotation; 
+            this.saveState();
+            this.showToast("Changes saved"); 
+            this.renderAllPages(); 
+            this.textModal.classList.add('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.add('scale-95'); 
+        }
 
-        // METADATA
+        /* --- METADATA --- */
         openMetadataModal() { document.getElementById('meta-title').value = this.metadata.title; document.getElementById('meta-author').value = this.metadata.author; document.getElementById('meta-subject').value = this.metadata.subject; this.metaModal.classList.remove('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.remove('scale-95'); }
         saveMetadata() { this.metadata.title = document.getElementById('meta-title').value; this.metadata.author = document.getElementById('meta-author').value; this.metadata.subject = document.getElementById('meta-subject').value; this.saveState(); this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); this.showToast("Metadata saved"); }
-
-        /* --- INTERACTIONS --- */
-        initContextMenu() { document.addEventListener('click', () => this.contextMenu.classList.add('hidden')); this.pageGrid.addEventListener('contextmenu', e => { const item = e.target.closest('.page-item'); if(!item) return; e.preventDefault(); this.contextTargetId = item.dataset.id; let x = e.clientX, y = e.clientY; if(x + 200 > window.innerWidth) x = window.innerWidth - 210; if(y + 200 > window.innerHeight) y = window.innerHeight - 210; this.contextMenu.style.left = `${x}px`; this.contextMenu.style.top = `${y}px`; this.contextMenu.classList.remove('hidden'); }); this.safeAddListener('ctx-edit', 'click', () => this.openPageEditor(this.contextTargetId)); this.safeAddListener('ctx-delete', 'click', () => this.deletePages([this.contextTargetId])); this.safeAddListener('ctx-duplicate', 'click', () => { this.selectedPageIds.clear(); this.selectedPageIds.add(this.contextTargetId); this.duplicateSelected(); }); this.safeAddListener('ctx-rotate-cw', 'click', () => this.rotatePages([this.contextTargetId], 90)); this.safeAddListener('ctx-rotate-ccw', 'click', () => this.rotatePages([this.contextTargetId], -90)); }
-        async restoreSession(saved) { this.showLoader(true, 'Restoring Session...'); this.sourceFiles = []; for (const f of saved.sourceFiles) { const source = { id: f.id, name: f.name, type: f.type, file: f.file }; if(f.type === 'application/pdf') { const ab = await f.file.arrayBuffer(); source.pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise; source.pdfLibDoc = await PDFLib.PDFDocument.load(ab); } this.sourceFiles.push(source); } this.pages = []; saved.pages.forEach(p => { const source = this.sourceFiles.find(s => s.id === p.sourceFileId); if(source) this.pages.push({ id: p.id, sourceFile: source, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: p.textOverlays }); }); document.getElementById('start-screen').classList.add('hidden'); document.querySelector('.app-container').classList.remove('hidden'); this.renderAllPages(); this.updateStatus(); this.showLoader(false); }
-        saveState() { const snapshot = this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])) })); this.historyStack.push(snapshot); if(this.historyStack.length > this.maxHistory) this.historyStack.shift(); this.redoStack = []; this.updateHistoryButtons(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata); this.autoSaveNotify(); }
-        restoreState(snapshot) { this.pages = []; snapshot.forEach(item => { const source = this.sourceFiles.find(f => f.id === item.sourceFileId); if(source) this.pages.push({ id: item.id, sourceFile: source, sourcePageIndex: item.sourcePageIndex, type: item.type, rotation: item.rotation, textOverlays: item.textOverlays || [] }); }); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata); }
-        performUndo() { if(this.historyStack.length) { this.redoStack.push(this.snapshotCurrentState()); this.restoreState(this.historyStack.pop()); this.updateHistoryButtons(); } }
-        performRedo() { if(this.redoStack.length) { this.historyStack.push(this.snapshotCurrentState()); this.restoreState(this.redoStack.pop()); this.updateHistoryButtons(); } }
-        snapshotCurrentState() { return this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])) })); }
-        updateHistoryButtons() { const u = document.getElementById('undoBtn'); if(u) u.disabled = !this.historyStack.length; const r = document.getElementById('redoBtn'); if(r) r.disabled = !this.redoStack.length; }
-        initSortable() { Sortable.create(this.pageGrid, { animation: 200, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', onStart: () => {}, onEnd: () => { this.saveState(); this.updateDataOrderFromDOM(); } }); }
-        handlePageClick(e) { const item = e.target.closest('.page-item'); if (!item) return; if (e.target.closest('.rotate-cw-btn')) { this.rotatePages([item.dataset.id], 90); return; } else if (e.target.closest('.rotate-ccw-btn')) { this.rotatePages([item.dataset.id], -90); return; } const id = item.dataset.id; if (e.shiftKey && this.lastSelectedId) { const all = [...this.pageGrid.children]; const start = all.findIndex(el => el.dataset.id === this.lastSelectedId); const end = all.findIndex(el => el.dataset.id === id); all.slice(Math.min(start, end), Math.max(start, end) + 1).forEach(el => this.selectedPageIds.add(el.dataset.id)); } else if (e.ctrlKey || e.metaKey) { this.toggleSelection(id); } else { this.selectedPageIds.clear(); this.selectedPageIds.add(id); } this.lastSelectedId = id; this.updateSelectionUI(); }
-        toggleSelection(id) { if (this.selectedPageIds.has(id)) this.selectedPageIds.delete(id); else this.selectedPageIds.add(id); this.updateSelectionUI(); }
-        updateSelectionUI() { [...this.pageGrid.children].forEach(el => { const s = this.selectedPageIds.has(el.dataset.id); if(s) { el.classList.add('selected'); el.querySelector('.page-checkbox').checked=true; el.querySelector('.page-checkbox-wrapper').classList.remove('opacity-0'); } else { el.classList.remove('selected'); el.querySelector('.page-checkbox').checked=false; el.querySelector('.page-checkbox-wrapper').classList.add('opacity-0'); } }); document.getElementById('selection-count').innerText = `${this.selectedPageIds.size} selected`; if(this.selectedPageIds.size > 0) document.getElementById('contextual-footer').classList.remove('hidden-island'); else document.getElementById('contextual-footer').classList.add('hidden-island'); }
-        deleteSelectedPages() { if (this.selectedPageIds.size) this.deletePages(Array.from(this.selectedPageIds)); }
-        deletePages(ids) { this.saveState(); this.pages = this.pages.filter(p => !ids.includes(p.id)); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.showToast('Pages deleted'); }
-        duplicateSelected() { if (!this.selectedPageIds.size) return; this.saveState(); const newPages = []; this.pages.forEach(p => { newPages.push(p); if (this.selectedPageIds.has(p.id)) { newPages.push({ id: `page_${Date.now()}_dup_${Math.random().toString(36).substr(2, 9)}`, sourceFile: p.sourceFile, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])) }); } }); this.pages = newPages; this.renderAllPages(); this.updateStatus(); this.showToast('Pages duplicated'); }
-        rotateSelectedPages(deg) { if (this.selectedPageIds.size) this.rotatePages(Array.from(this.selectedPageIds), deg); }
-        rotatePages(ids, deg) { this.saveState(); ids.forEach(id => { const p = this.pages.find(x => x.id === id); if (p) p.rotation = (p.rotation + deg + 360) % 360; }); this.renderAllPages(); this.showToast('Pages rotated'); }
-        sortByNumber() { this.saveState(); const map = new Map(); document.querySelectorAll('.page-order-input').forEach(i => map.set(i.closest('.page-item').dataset.id, parseInt(i.value) || 9999)); this.pages.sort((a, b) => map.get(a.id) - map.get(b.id)); this.renderAllPages(); this.showToast('Sorted by number'); }
-        updateDataOrderFromDOM() { const newPages = []; [...this.pageGrid.children].forEach(el => newPages.push(this.pages.find(p => p.id === el.dataset.id))); this.pages = newPages; this.renderAllPages(); }
-        updateStatus() { this.updateSelectionUI(); if(this.pages.length === 0) this.clearWorkspace(); }
-        async clearWorkspace() { if(!confirm("Are you sure? This will remove all pages and files.")) return; this.saveState(); this.pages = []; this.sourceFiles = []; this.selectedPageIds.clear(); this.renderAllPages(); document.getElementById('start-screen').classList.remove('hidden'); document.querySelector('.app-container').classList.add('hidden'); await this.dbManager.clear(); }
-        showLoader(show, text = 'Processing...') { const loader = document.getElementById('loader'); if(loader) { loader.classList.toggle('hidden', !show); document.getElementById('loader-text').innerText = text; } }
-        toggleSidebar(show){ document.querySelector('.app-container').classList.toggle('sidebar-mobile-open', show); document.getElementById('sidebar-overlay').classList.toggle('hidden', !show); if(show) document.getElementById('sidebar').classList.remove('-translate-x-full'); else document.getElementById('sidebar').classList.add('-translate-x-full'); }
-        toggleSidebarSize() { const sb = document.getElementById('sidebar'); sb.classList.toggle('w-72'); sb.classList.toggle('w-16'); const labels = sb.querySelectorAll('.text-sm, .text-xs, .truncate'); labels.forEach(l => l.classList.toggle('hidden')); }
-
-        initMarqueeSelection() {
-            const container = document.getElementById('page-grid-container'); if(!container) return; let isSelecting=false, startX, startY, marquee=null;
-            container.addEventListener('mousedown', e => { if(e.target !== container && e.target !== document.getElementById('page-grid')) return; isSelecting=true; const rect=container.getBoundingClientRect(); startX=e.clientX-rect.left+container.scrollLeft; startY=e.clientY-rect.top+container.scrollTop; marquee=document.createElement('div'); marquee.className='marquee-box'; marquee.style.left=startX+'px'; marquee.style.top=startY+'px'; container.appendChild(marquee); if(!e.ctrlKey&&!e.shiftKey) { this.selectedPageIds.clear(); this.updateSelectionUI(); } });
-            container.addEventListener('mousemove', e => { if(!isSelecting) return; const rect=container.getBoundingClientRect(); const currentX=e.clientX-rect.left+container.scrollLeft; const currentY=e.clientY-rect.top+container.scrollTop; const width=Math.abs(currentX-startX); const height=Math.abs(currentY-startY); marquee.style.width=width+'px'; marquee.style.height=height+'px'; marquee.style.left=Math.min(currentX,startX)+'px'; marquee.style.top=Math.min(currentY,startY)+'px'; });
-            document.addEventListener('mouseup', () => { if(!isSelecting) return; isSelecting=false; if(marquee) { const marqueeRect=marquee.getBoundingClientRect(); document.querySelectorAll('.page-item').forEach(item => { const itemRect=item.getBoundingClientRect(); if (marqueeRect.left<itemRect.right && marqueeRect.right>itemRect.left && marqueeRect.top<itemRect.bottom && marqueeRect.bottom>itemRect.top) { this.selectedPageIds.add(item.dataset.id); } }); marquee.remove(); } this.updateSelectionUI(); });
-        }
-        initEventListeners() {
-            document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); this.performUndo(); } if ((e.ctrlKey||e.metaKey) && e.key === 'y') { e.preventDefault(); this.performRedo(); } if ((e.key === 'Delete'||e.key === 'Backspace') && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) this.deleteSelectedPages(); if ((e.ctrlKey||e.metaKey) && e.key === 'a') { e.preventDefault(); this.pages.forEach(p=>this.selectedPageIds.add(p.id)); this.updateSelectionUI(); } 
-                if(['ArrowRight','ArrowLeft'].includes(e.key) && document.activeElement.classList.contains('page-item')) { const items = [...document.querySelectorAll('.page-item')]; const idx = items.indexOf(document.activeElement); if(e.key==='ArrowRight' && idx < items.length-1) items[idx+1].focus(); if(e.key==='ArrowLeft' && idx > 0) items[idx-1].focus(); }
-            });
-            window.addEventListener('beforeunload', e => { if (this.pages.length > 0) { e.preventDefault(); e.returnValue = ''; } });
-            this.safeAddListener('undoBtn', 'click', () => this.performUndo()); this.safeAddListener('redoBtn', 'click', () => this.performRedo());
-            this.safeAddListener('zoomSlider', 'input', e => document.documentElement.style.setProperty('--grid-size', `${e.target.value}px`));
-            this.safeAddListener('darkModeToggle', 'click', () => document.documentElement.classList.toggle('dark'));
-            this.safeAddListener('viewGridBtn', 'click', () => { document.getElementById('page-grid').className = 'grid gap-6 dynamic-grid pb-20 view-grid'; });
-            this.safeAddListener('viewListBtn', 'click', () => { document.getElementById('page-grid').className = 'view-list pb-20'; });
-            this.safeAddListener('addFilesBtn', 'click', () => document.getElementById('fileInput').click()); this.safeAddListener('startChooseFileBtn', 'click', () => document.getElementById('fileInput').click());
-            this.safeAddListener('fileInput', 'change', async (e) => { await this.addFiles(Array.from(e.target.files)); e.target.value = ''; });
-            this.safeAddListener('sidebar-close-btn', 'click', () => this.toggleSidebar(false)); this.safeAddListener('menu-toggle-btn', 'click', () => this.toggleSidebar(true));
-            this.safeAddListener('toggleSidebarSize', 'click', () => this.toggleSidebarSize());
-            this.safeAddListener('insertBlankBtn', 'click', () => this.insertBlankPage());
-            this.safeAddListener('openTextModalBtn', 'click', () => { if(this.pages.length > 0) this.openPageEditor(this.pages[0].id); else this.showToast('Add pages first', 'error'); });
-            const closeText = document.querySelector('.close-text-modal'); if(closeText) closeText.addEventListener('click', () => { this.textModal.classList.add('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.add('scale-95'); });
-            this.safeAddListener('addTextLayerBtn', 'click', () => this.addTextLayerToEditor());
-            this.safeAddListener('editor-rotate-cw', 'click', () => this.editorRotate(90)); this.safeAddListener('editor-rotate-ccw', 'click', () => this.editorRotate(-90));
-            this.safeAddListener('savePageEdits', 'click', () => this.savePageEdits());
-            ['txt-content', 'txt-size', 'txt-color', 'txt-rotation', 'txt-font', 'txt-opacity'].forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener('input', () => this.updateActiveTextLayer()); });
-            this.safeAddListener('txt-shadow', 'change', () => this.toggleShadow());
-            this.safeAddListener('txt-bold-btn', 'click', () => this.toggleBold());
-            this.safeAddListener('txt-italic-btn', 'click', () => this.toggleItalic());
-            this.safeAddListener('delete-layer-btn', 'click', () => this.deleteActiveLayer());
-            this.safeAddListener('selectAllBtn', 'click', () => { this.pages.forEach(p=>this.selectedPageIds.add(p.id)); this.updateSelectionUI(); });
-            this.safeAddListener('deselectAllBtn', 'click', () => { this.selectedPageIds.clear(); this.updateSelectionUI(); });
-            this.safeAddListener('deleteSelectedBtn', 'click', () => this.deleteSelectedPages()); this.safeAddListener('rotateSelectedBtn', 'click', () => this.rotateSelectedPages(90));
-            this.safeAddListener('duplicateSelectedBtn', 'click', () => this.duplicateSelected());
-            this.safeAddListener('sortByNumberBtn', 'click', () => this.sortByNumber());
-            this.safeAddListener('clearBtn', 'click', () => this.clearWorkspace());
-            this.safeAddListener('saveBtn', 'click', () => this.createPdf());
-            this.safeAddListener('printBtn', 'click', () => this.createPdf(false, true));
-            this.safeAddListener('previewBtn', 'click', () => this.createPdf(true));
-            this.safeAddListener('openMetadataBtn', 'click', () => this.openMetadataModal());
-            this.safeAddListener('saveMetadataBtn', 'click', () => this.saveMetadata());
-            const closeMeta = document.querySelector('.close-meta-modal'); if(closeMeta) closeMeta.addEventListener('click', () => { this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); });
-            document.querySelectorAll('.pos-btn').forEach(btn => btn.addEventListener('click', e => this.setTextPosition(e.target.dataset.pos)));
-            document.querySelectorAll('.stamp-btn').forEach(btn => btn.addEventListener('click', e => this.addStamp(e.target.dataset.text, e.target.dataset.color)));
-
-            this.pageGrid.addEventListener('click', this.handlePageClick.bind(this));
-            this.pageGrid.addEventListener('dblclick', e => { const item = e.target.closest('.page-item'); if (item) this.openPageEditor(item.dataset.id); });
-            ['startDropZone', 'main-view'].forEach(id => { const z = document.getElementById(id); if(z) { z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('dragover'); }); z.addEventListener('dragleave', e => { e.preventDefault(); z.classList.remove('dragover'); }); z.addEventListener('drop', e => { e.preventDefault(); z.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); }); } });
-        }
-        hexToRgb(hex) { const r = parseInt(hex.substr(1, 2), 16) / 255; const g = parseInt(hex.substr(3, 2), 16) / 255; const b = parseInt(hex.substr(5, 2), 16) / 255; return { r, g, b }; }
 
         /* --- EXPORT --- */
         getFont(family, isBold, isItalic) {
@@ -578,8 +584,6 @@
             try {
                 const doc = await PDFLib.PDFDocument.create();
                 doc.setTitle(this.metadata.title); doc.setAuthor(this.metadata.author); doc.setSubject(this.metadata.subject);
-                
-                // Embed ALL standard fonts to handle bold/italic switching dynamically
                 const embeddedFonts = {};
                 const fontList = ['Helvetica','HelveticaBold','HelveticaOblique','HelveticaBoldOblique','TimesRoman','TimesRomanBold','TimesRomanItalic','TimesRomanBoldItalic','Courier','CourierBold','CourierOblique','CourierBoldOblique'];
                 for(const f of fontList) embeddedFonts[f] = await doc.embedFont(PDFLib.StandardFonts[f]);
@@ -599,9 +603,22 @@
                     if (p.textOverlays) { 
                         const { width, height } = page.getSize(); 
                         p.textOverlays.forEach(t => { 
-                            const x = width * (t.xPercent / 100); const y = height - (height * (t.yPercent / 100)); 
+                            // Map % to actual coordinates.
+                            // NOTE: Editor visual scale might differ slightly from font rendering scale due to devicePixelRatio vs PDF points.
+                            // For simplicity, we assume visual pixel size roughly maps to PDF points (1/72 inch). 
+                            // To map perfectly, we rely on percentages.
+                            const x = width * (t.xPercent / 100); 
+                            const y = height - (height * (t.yPercent / 100)); // PDF y is bottom-up
+                            
                             const fontKey = this.getFont(t.font, t.isBold, t.isItalic);
-                            page.drawText(t.text, { x, y, size: t.size, font: embeddedFonts[fontKey], color: PDFLib.rgb(this.hexToRgb(t.color).r, this.hexToRgb(t.color).g, this.hexToRgb(t.color).b), opacity: t.opacity || 1, rotate: PDFLib.degrees(t.rotation || 0), xCentered: true, yCentered: true }); 
+                            page.drawText(t.text, { 
+                                x, y, size: t.size, 
+                                font: embeddedFonts[fontKey], 
+                                color: PDFLib.rgb(this.hexToRgb(t.color).r, this.hexToRgb(t.color).g, this.hexToRgb(t.color).b), 
+                                opacity: t.opacity || 1, 
+                                rotate: PDFLib.degrees(t.rotation || 0), 
+                                xCentered: true, yCentered: true 
+                            }); 
                         }); 
                     }
                     if (addPageNum) { const { width } = page.getSize(); page.drawText(`${i+1} / ${this.pages.length}`, { x: width/2, y: 20, size: 10, font: embeddedFonts['Helvetica'], color: PDFLib.rgb(0,0,0), xCentered: true }); }
