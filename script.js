@@ -201,7 +201,14 @@ class VisualPDFTool {
         document.querySelector('.close-modal-btn').addEventListener('click', () => this.previewModal.classList.add('hidden'));
         this.previewModal.addEventListener('click', (e) => { if (e.target === this.previewModal) this.previewModal.classList.add('hidden'); });
     }
-
+    
+// --- FILE HANDLING WRAPPER ---
+    async handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        await this.addFiles(files);
+        e.target.value = ''; 
+    }
+    
     // --- CORE FILE HANDLING ---
     async addFiles(files) {
         if (files.length === 0) return;
