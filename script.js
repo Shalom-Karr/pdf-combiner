@@ -1,4 +1,5 @@
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
+// Point to the LOCAL worker file
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
 
 class VisualPDFTool {
     constructor() {
@@ -36,7 +37,6 @@ class VisualPDFTool {
         this.initSortable();
         this.initEventListeners();
         this.checkTheme();
-        // Set initial Grid Size
         document.documentElement.style.setProperty('--grid-size', '180px');
     }
 
@@ -48,7 +48,7 @@ class VisualPDFTool {
             sourcePageIndex: page.sourcePageIndex,
             type: page.type,
             rotation: page.rotation,
-            textOverlays: JSON.parse(JSON.stringify(page.textOverlays || [])) // Deep copy text data
+            textOverlays: JSON.parse(JSON.stringify(page.textOverlays || [])) 
         }));
 
         this.historyStack.push(stateSnapshot);
@@ -119,34 +119,26 @@ class VisualPDFTool {
     }
 
     initEventListeners() {
-        // Global Keys
+        // Keys
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); this.performUndo(); }
             if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); this.performRedo(); }
-            if ((e.key === 'Delete' || e.key === 'Backspace') && document.activeElement.tagName !== 'INPUT') { 
+            if ((e.key === 'Delete' || e.key === 'Backspace') && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { 
                 this.deleteSelectedPages(); 
             }
         });
 
-        // Safety
         window.addEventListener('beforeunload', (e) => {
             if (this.pages.length > 0) { e.preventDefault(); e.returnValue = ''; }
         });
 
-        // Toolbar
         this.undoBtn.addEventListener('click', () => this.performUndo());
         this.redoBtn.addEventListener('click', () => this.performRedo());
-        this.zoomSlider.addEventListener('input', (e) => {
-            document.documentElement.style.setProperty('--grid-size', `${e.target.value}px`);
-        });
+        this.zoomSlider.addEventListener('input', (e) => document.documentElement.style.setProperty('--grid-size', `${e.target.value}px`));
         this.darkModeToggle.addEventListener('click', () => this.toggleDarkMode());
-        
-        // Help
-        document.getElementById('helpBtn').addEventListener('click', () => {
-            alert("⌨️ Shortcuts:\n\n• Ctrl/Shift + Click: Select multiple\n• Ctrl + Z/Y: Undo/Redo\n• Delete: Remove pages\n• Drag: Reorder");
-        });
+        document.getElementById('helpBtn').addEventListener('click', () => alert("⌨️ Shortcuts:\n\n• Ctrl/Shift + Click: Select multiple\n• Ctrl + Z/Y: Undo/Redo\n• Delete: Remove pages\n• Drag: Reorder"));
 
-        // File Inputs
+        // Files
         document.getElementById('startChooseFileBtn').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('addFilesBtn').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileSelect(e));
@@ -158,25 +150,44 @@ class VisualPDFTool {
         // Tools
         document.getElementById('selectRangeBtn').addEventListener('click', () => this.selectByRange());
         document.getElementById('insertBlankBtn').addEventListener('click', () => this.insertBlankPage());
-        document.getElementById('openTextModalBtn').addEventListener('click', () => this.textModal.classList.remove('hidden'));
+        document.getElementById('openTextModalBtn').addEventListener('click', () => {
+            this.textModal.classList.remove('hidden');
+            this.updateTextPreview(); // Init preview
+        });
 
-        // Text Modal
+        // Text Modal Interactions
         document.querySelector('.close-text-modal').addEventListener('click', () => this.textModal.classList.add('hidden'));
         document.getElementById('applyTextSelected').addEventListener('click', () => this.applyTextToPages(true));
         document.getElementById('applyTextAll').addEventListener('click', () => this.applyTextToPages(false));
+        
+        // Text Preview Listeners
+        const inputs = ['txt-content', 'txt-size', 'txt-color'];
+        inputs.forEach(id => document.getElementById(id).addEventListener('input', () => this.updateTextPreview()));
+        
+        document.querySelectorAll('.pos-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Style buttons
+                document.querySelectorAll('.pos-btn').forEach(b => {
+                    b.classList.remove('bg-indigo-100', 'border-indigo-500', 'text-indigo-700', 'dark:bg-indigo-900', 'dark:text-indigo-200');
+                    b.classList.add('hover:bg-indigo-50', 'dark:hover:bg-slate-600');
+                });
+                e.target.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700', 'dark:bg-indigo-900', 'dark:text-indigo-200');
+                e.target.classList.remove('hover:bg-indigo-50', 'dark:hover:bg-slate-600');
+                
+                document.getElementById('txt-position').value = e.target.dataset.pos;
+                this.updateTextPreview();
+            });
+        });
 
-        // Editor Actions
+        // Common Actions
         document.getElementById('clearBtn').addEventListener('click', () => this.clearWorkspace());
         document.getElementById('selectAllBtn').addEventListener('click', () => this.selectAll());
         document.getElementById('deselectAllBtn').addEventListener('click', () => this.deselectAll());
         document.getElementById('sortByNumberBtn').addEventListener('click', () => this.sortByNumber());
-        
-        // Footer Actions
         document.getElementById('deleteSelectedBtn').addEventListener('click', () => this.deleteSelectedPages());
         document.getElementById('rotateSelectedBtn').addEventListener('click', () => this.rotateSelectedPages(90));
         document.getElementById('duplicateSelectedBtn').addEventListener('click', () => this.duplicateSelected());
         
-        // Export
         document.getElementById('saveBtn').addEventListener('click', () => this.createPdf());
         document.getElementById('previewBtn').addEventListener('click', (e) => { e.preventDefault(); this.createPdf(true); });
         document.getElementById('printBtn').addEventListener('click', (e) => { e.preventDefault(); this.printPdf(); });
@@ -189,22 +200,18 @@ class VisualPDFTool {
             }
         });
 
-        // Grid
         this.pageGrid.addEventListener('click', this.handlePageClick.bind(this));
         this.pageGrid.addEventListener('dblclick', (e) => {
             const item = e.target.closest('.page-item');
             if (item) this.openPreviewModal(item.dataset.id);
         });
 
-        // Drag Drop
         const dropZones = [document.getElementById('startDropZone'), this.mainView];
         dropZones.forEach(zone => {
             zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
             zone.addEventListener('dragleave', (e) => { e.preventDefault(); zone.classList.remove('dragover'); });
             zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); });
         });
-
-        // Preview Modal
         document.querySelector('.close-modal-btn').addEventListener('click', () => this.previewModal.classList.add('hidden'));
     }
 
@@ -270,14 +277,47 @@ class VisualPDFTool {
         });
     }
 
-    // --- TEXT TOOL ---
+    // --- TEXT TOOL & PREVIEW ---
+    updateTextPreview() {
+        const text = document.getElementById('txt-content').value || 'Type here...';
+        const size = document.getElementById('txt-size').value;
+        const color = document.getElementById('txt-color').value;
+        const pos = document.getElementById('txt-position').value;
+        
+        const preview = document.getElementById('preview-text-layer');
+        preview.innerText = text;
+        preview.style.fontSize = `${size}px`;
+        preview.style.color = color;
+        
+        // Reset positioning
+        preview.style.top = 'auto'; preview.style.bottom = 'auto';
+        preview.style.left = 'auto'; preview.style.right = 'auto';
+        preview.style.transform = 'none';
+
+        // Map abstract position to CSS
+        // Using approximate padding (8px = 0.5rem) to simulate PDF margins
+        if(pos.includes('top')) preview.style.top = '20px';
+        if(pos.includes('bottom')) preview.style.bottom = '20px';
+        
+        if(pos.includes('left')) preview.style.left = '20px';
+        if(pos.includes('right')) { preview.style.right = '20px'; preview.style.textAlign = 'right'; }
+        
+        if(pos === 'center') {
+            preview.style.top = '50%'; preview.style.left = '50%';
+            preview.style.transform = 'translate(-50%, -50%)';
+        } else if (pos.includes('center')) {
+             preview.style.left = '50%';
+             preview.style.transform = 'translateX(-50%)';
+        }
+    }
+
     applyTextToPages(onlySelected) {
         const text = document.getElementById('txt-content').value;
-        if (!text) return;
+        if (!text) { alert("Please enter text."); return; }
         
         const position = document.getElementById('txt-position').value;
         const size = parseInt(document.getElementById('txt-size').value) || 12;
-        const color = document.getElementById('txt-color').value; // Hex string
+        const color = document.getElementById('txt-color').value;
 
         this.saveState();
         
@@ -291,7 +331,6 @@ class VisualPDFTool {
             if (!page.textOverlays) page.textOverlays = [];
             page.textOverlays.push({ text, position, size, color });
             
-            // Visual Indicator on Thumbnail
             const el = this.pageGrid.querySelector(`.page-item[data-id="${page.id}"]`);
             if(el && !el.querySelector('.text-badge')) {
                 const badge = document.createElement('div');
@@ -302,10 +341,10 @@ class VisualPDFTool {
         });
 
         this.textModal.classList.add('hidden');
-        document.getElementById('txt-content').value = ''; // Reset
+        document.getElementById('txt-content').value = '';
     }
 
-    // --- RENDERING (TAILWIND STYLES) ---
+    // --- RENDERING ---
     renderAllPages() {
         this.pageGrid.innerHTML = '';
         this.pages.forEach((page, index) => this.renderThumbnail(page, index));
@@ -323,7 +362,6 @@ class VisualPDFTool {
         item.className = 'page-item group relative cursor-pointer rounded-lg bg-white dark:bg-slate-700 shadow-sm border-2 border-transparent hover:-translate-y-1 hover:shadow-md transition-all overflow-hidden flex flex-col';
         item.dataset.id = pageData.id;
         
-        // Show badge if text exists
         const hasText = pageData.textOverlays && pageData.textOverlays.length > 0;
         const badgeHtml = hasText ? '<div class="text-badge absolute top-8 right-2 bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow z-10">T</div>' : '';
 
@@ -353,7 +391,6 @@ class VisualPDFTool {
 
         this.pageGrid.appendChild(item);
         
-        // Render Canvas
         const canvas = item.querySelector('canvas');
         if (pageData.type === 'blank') {
             canvas.width = 200; canvas.height = 280;
@@ -369,13 +406,8 @@ class VisualPDFTool {
                 const ctx = canvas.getContext('2d');
                 ctx.translate(canvas.width/2, canvas.height/2);
                 ctx.rotate((pageData.rotation * Math.PI) / 180);
-                // Adjust for rotation
-                if(pageData.rotation % 180 !== 0) {
-                     // Very simple drawing for thumb, not perfect rotation centering but enough for visual
-                     ctx.drawImage(img, -canvas.height/2, -canvas.width/2, canvas.height, canvas.width);
-                } else {
-                     ctx.drawImage(img, -canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
-                }
+                if(pageData.rotation % 180 !== 0) ctx.drawImage(img, -canvas.height/2, -canvas.width/2, canvas.height, canvas.width);
+                else ctx.drawImage(img, -canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
             };
         } else if (pageData.type === 'pdf') {
             try {
@@ -439,7 +471,7 @@ class VisualPDFTool {
         else this.contextualFooter.classList.add('translate-y-full');
     }
 
-    // --- ACTIONS (Delete, Rotate, Sort, Etc) ---
+    // --- ACTIONS ---
     deleteSelectedPages() {
         if (this.selectedPageIds.size === 0) return;
         this.deletePages(Array.from(this.selectedPageIds));
@@ -458,7 +490,7 @@ class VisualPDFTool {
         this.pages.forEach(page => {
             newPages.push(page);
             if (this.selectedPageIds.has(page.id)) {
-                const dup = JSON.parse(JSON.stringify(page)); // Deep copy
+                const dup = JSON.parse(JSON.stringify(page));
                 dup.id = `page_${Date.now()}_dup_${Math.random().toString(36).substr(2,5)}`;
                 newPages.push(dup);
             }
@@ -477,7 +509,6 @@ class VisualPDFTool {
             const page = this.pages.find(p => p.id === id);
             if (page) {
                 page.rotation = (page.rotation + angle + 360) % 360;
-                // Re-rendering specific thumbnails is complex with rotation, easier to just update all for now or check rotation logic
                 this.renderAllPages(); 
             }
         });
@@ -520,7 +551,7 @@ class VisualPDFTool {
         this.updateSelectionUI();
     }
 
-    // --- PREVIEW ---
+    // --- PREVIEW & EXPORT ---
     async openPreviewModal(pageId) {
         const page = this.pages.find(p => p.id === pageId);
         if(!page) return;
@@ -530,7 +561,6 @@ class VisualPDFTool {
         const container = document.querySelector('.modal-body');
         document.getElementById('preview-meta').innerText = `${page.sourceFile.name} - Page ${page.sourcePageIndex + 1}`;
 
-        // Simple render logic for preview (ignoring text overlay for simplicity in preview, text appears on export)
         if(page.type === 'blank') {
             canvas.width = 400; canvas.height = 560;
             ctx.fillStyle = 'white'; ctx.fillRect(0,0,400,560);
@@ -557,19 +587,16 @@ class VisualPDFTool {
         }
     }
 
-    // --- EXPORT PDF (With Text) ---
     async createPdf(isPreview = false) {
         if(this.pages.length === 0) return;
         this.showLoader(true, 'Generating PDF...');
         
         try {
             const newDoc = await PDFLib.PDFDocument.create();
-            // Embed font for text
             const helveticaFont = await newDoc.embedFont(PDFLib.StandardFonts.Helvetica);
             
             for(const p of this.pages) {
                 let page;
-                
                 if(p.type === 'blank') {
                     page = newDoc.addPage([595, 842]);
                 } 
@@ -578,18 +605,14 @@ class VisualPDFTool {
                     let embedded;
                     if(p.sourceFile.type.includes('png')) embedded = await newDoc.embedPng(imgBytes);
                     else embedded = await newDoc.embedJpg(imgBytes);
-                    
                     const { width, height } = embedded;
-                    page = newDoc.addPage([width, height]); // Simplified page sizing for image
-                    
-                    // Rotation handling for images in PDF-lib is tricky, simplified here:
+                    page = newDoc.addPage([width, height]);
                     if (p.rotation === 0) page.drawImage(embedded, {x:0, y:0, width, height});
                     else {
                         page.setRotation(PDFLib.degrees(p.rotation));
-                        if(p.rotation === 90) page.drawImage(embedded, {x:0, y:-height, width, height}); // Basic offset logic
+                        if(p.rotation === 90) page.drawImage(embedded, {x:0, y:-height, width, height});
                         else if (p.rotation === 180) page.drawImage(embedded, {x:-width, y:-height, width, height});
-                        // Note: Robust image rotation usually requires calculating new page dimensions.
-                        // For this demo, we assume user accepts basic rotation.
+                        else if (p.rotation === 270) page.drawImage(embedded, {x:-width, y:0, width, height});
                     }
                 } 
                 else {
@@ -598,7 +621,6 @@ class VisualPDFTool {
                     page = newDoc.addPage(copied);
                 }
 
-                // --- DRAW TEXT OVERLAYS ---
                 if (p.textOverlays && p.textOverlays.length > 0) {
                     const { width, height } = page.getSize();
                     p.textOverlays.forEach(txt => {
@@ -606,7 +628,6 @@ class VisualPDFTool {
                         const textWidth = helveticaFont.widthOfTextAtSize(txt.text, txt.size);
                         let x = 50, y = 50;
 
-                        // Position Logic
                         if (txt.position.includes('top')) y = height - 50;
                         if (txt.position.includes('bottom')) y = 50;
                         if (txt.position === 'center') y = height / 2;
@@ -615,13 +636,7 @@ class VisualPDFTool {
                         if (txt.position.includes('center')) x = (width - textWidth) / 2;
                         if (txt.position.includes('right')) x = width - textWidth - 50;
 
-                        page.drawText(txt.text, {
-                            x: x,
-                            y: y,
-                            size: txt.size,
-                            font: helveticaFont,
-                            color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
-                        });
+                        page.drawText(txt.text, { x, y, size: txt.size, font: helveticaFont, color: PDFLib.rgb(rgb.r, rgb.g, rgb.b) });
                     });
                 }
             }
@@ -648,7 +663,6 @@ class VisualPDFTool {
         }
     }
 
-    // Helper
     hexToRgb(hex) {
         const r = parseInt(hex.substr(1, 2), 16) / 255;
         const g = parseInt(hex.substr(3, 2), 16) / 255;
@@ -663,10 +677,7 @@ class VisualPDFTool {
          if(show) document.getElementById('sidebar').classList.remove('-translate-x-full');
          else document.getElementById('sidebar').classList.add('-translate-x-full');
     }
-    toggleDarkMode() { 
-        document.documentElement.classList.toggle('dark');
-        // Need to update drag over styles or canvas backgrounds if dependent on class
-    }
+    toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
     checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) this.toggleDarkMode(); }
     
     updateSourceFileList() {
