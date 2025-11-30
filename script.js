@@ -193,9 +193,6 @@ class VisualPDFTool {
             marquee.style.height = height + 'px';
             marquee.style.left = left + 'px';
             marquee.style.top = (Math.min(e.clientY, startY - container.scrollTop) + container.scrollTop) + 'px'; // Tricky scrolling math fix
-            
-            // Note: Proper scroll handling for marquee in overflow containers is complex in raw JS.
-            // Simplified: Just selecting based on viewport intersection for now.
         });
 
         document.addEventListener('mouseup', e => {
@@ -302,6 +299,7 @@ class VisualPDFTool {
             document.getElementById('txt-color').value = l.color;
             document.getElementById('txt-font').value = l.font;
             document.getElementById('txt-rotation').value = l.rotation;
+            if(document.getElementById('txt-opacity')) document.getElementById('txt-opacity').value = l.opacity;
         } else {
             controls.classList.add('opacity-50', 'pointer-events-none');
         }
@@ -324,24 +322,17 @@ class VisualPDFTool {
         l.color = document.getElementById('txt-color').value;
         l.font = document.getElementById('txt-font').value;
         l.rotation = parseInt(document.getElementById('txt-rotation').value);
+        if(document.getElementById('txt-opacity')) l.opacity = parseFloat(document.getElementById('txt-opacity').value);
         this.renderOverlayLayers();
     }
     
     startDrag(e, index, container) {
         let isDragging = true;
         const rect = container.getBoundingClientRect();
-        // Adjust for rotation if needed (simplified here)
         const moveHandler = (ev) => {
             if(!isDragging) return;
-            // Calculate mouse pos relative to rotated container is tricky.
-            // Simplified: Assuming 0 deg rotation for drag math logic for this snippet or using delta
-            // For robust rotated drag, we map screen coordinates to the container's transform matrix.
-            // Here we use simple bounding box logic for 0 deg.
-            
             const x = ev.clientX - rect.left;
             const y = ev.clientY - rect.top;
-            
-            // Simple constraint
             this.tempTextOverlays[index].xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100));
             this.tempTextOverlays[index].yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100));
             this.renderOverlayLayers();
@@ -468,7 +459,10 @@ class VisualPDFTool {
         document.getElementById('editor-rotate-cw').addEventListener('click', () => this.editorRotate(90));
         document.getElementById('editor-rotate-ccw').addEventListener('click', () => this.editorRotate(-90));
         document.getElementById('savePageEdits').addEventListener('click', () => this.savePageEdits(false));
-        ['txt-content', 'txt-size', 'txt-color', 'txt-rotation', 'txt-font'].forEach(id => document.getElementById(id).addEventListener('input', () => this.updateActiveTextLayer()));
+        ['txt-content', 'txt-size', 'txt-color', 'txt-rotation', 'txt-font', 'txt-opacity'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('input', () => this.updateActiveTextLayer());
+        });
         document.getElementById('delete-layer-btn').addEventListener('click', () => this.deleteActiveLayer());
 
         // Actions
@@ -505,7 +499,7 @@ class VisualPDFTool {
     showLoader(s,t){ document.getElementById('loader').classList.toggle('hidden', !s); document.getElementById('loader-text').innerText=t; }
     checkTheme(){ if(window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark'); }
     
-    // Core Actions (Delete, Dup, Rotate, Sort) - Same logic as before
+    // Core Actions
     deleteSelectedPages(){ if(this.selectedPageIds.size) this.deletePages(Array.from(this.selectedPageIds)); }
     deletePages(ids){ this.saveState(); this.pages=this.pages.filter(p=>!ids.includes(p.id)); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.showToast('Pages deleted'); }
     duplicateSelected(){ if(!this.selectedPageIds.size) return; this.saveState(); const n=[]; this.pages.forEach(p=>{ n.push(p); if(this.selectedPageIds.has(p.id)) n.push({id:`page_${Date.now()}_dup_${Math.random()}`, sourceFile:p.sourceFile, sourcePageIndex:p.sourcePageIndex, type:p.type, rotation:p.rotation, textOverlays:JSON.parse(JSON.stringify(p.textOverlays||[]))}); }); this.pages=n; this.renderAllPages(); this.updateStatus(); this.showToast('Pages duplicated'); }
@@ -516,7 +510,6 @@ class VisualPDFTool {
     selectAll(){ this.pages.forEach(p=>this.selectedPageIds.add(p.id)); this.updateSelectionUI(); }
     deselectAll(){ this.selectedPageIds.clear(); this.updateSelectionUI(); }
     
-    // Update Selection UI (Handle floating island)
     updateSelectionUI() {
         [...this.pageGrid.children].forEach(el => {
             const s=this.selectedPageIds.has(el.dataset.id);
