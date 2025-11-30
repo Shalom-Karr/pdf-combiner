@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual PDF Editor Pro (Full Suite)</title>
+    <title>Visual PDF Editor Pro (Ultimate)</title>
 
     <!-- LOCAL LIBRARIES -->
     <script src="js/pdf-lib.min.js"></script>
@@ -18,7 +18,7 @@
                 extend: {
                     fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
                     colors: { primary: '#4f46e5', secondary: '#64748b' },
-                    animation: { 'shimmer': 'shimmer 1.5s infinite' },
+                    animation: { 'shimmer': 'shimmer 1.5s infinite', 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' },
                     keyframes: { shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } } }
                 }
             }
@@ -26,22 +26,26 @@
     </script>
     
     <style>
+        /* CORE UX */
         body { font-family: 'Inter', sans-serif; user-select: none; overscroll-behavior: none; }
         
-        /* Animations & Interactions */
-        .page-item { transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1); }
+        /* CARD ANIMATIONS & FOCUS */
+        .page-item { transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1); outline: none; }
         .page-item:hover { transform: translateY(-4px) scale(1.01); z-index: 10; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
         .page-item.selected { ring: 2px solid #6366f1; transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(99 102 241 / 0.15); }
-        
+        .page-item:focus-visible { ring: 2px solid #6366f1; ring-offset: 2px; }
+
+        /* DRAG & DROP */
         .sortable-ghost { opacity: 0.4; background: #e0e7ff; border: 2px dashed #6366f1; }
         .sortable-drag { cursor: grabbing; opacity: 1 !important; background: white; transform: scale(1.05); z-index: 50; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.2); }
         
+        /* UI ELEMENTS */
         #contextual-footer { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; }
         #contextual-footer.hidden-island { transform: translate(-50%, 200%); opacity: 0; pointer-events: none; }
         
         .marquee-box { position: absolute; border: 1px solid #6366f1; background-color: rgba(99, 102, 241, 0.1); z-index: 50; pointer-events: none; }
         
-        /* Grid System */
+        /* GRID & LAYOUT */
         :root { --grid-size: 180px; }
         .view-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); gap: 1.5rem; }
         .view-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -49,7 +53,7 @@
         .view-list .canvas-wrapper { width: 60px; height: 100%; margin-right: 1rem; flex-shrink: 0; }
         .view-list .page-info { border: none; flex: 1; text-align: left; }
         
-        /* Utilities */
+        /* UTILITIES */
         .skeleton-shimmer { background: #f1f5f9; position: relative; overflow: hidden; }
         .skeleton-shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: shimmer 1.5s infinite; }
         .dark .skeleton-shimmer { background: #334155; }
@@ -59,8 +63,15 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
 
+        /* EDITOR & TOOLTIPS */
         .draggable-text { position: absolute; cursor: move; user-select: none; white-space: pre; border: 1px dashed transparent; padding: 4px; line-height: 1; }
         .draggable-text:hover, .draggable-text.active { border-color: #6366f1; background: rgba(99, 102, 241, 0.1); }
+
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+            padding: 4px 8px; background: #1e293b; color: white; font-size: 10px; border-radius: 4px;
+            white-space: nowrap; z-index: 60; margin-bottom: 6px; pointer-events: none;
+        }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 h-full overflow-hidden transition-colors duration-200">
@@ -89,7 +100,7 @@
                     HIPAA Ready: 100% Local
                 </div>
                 <h1 class="text-4xl font-bold mb-4 tracking-tight">Visual PDF Editor <span class="text-indigo-400">Pro</span></h1>
-                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit medical documents locally.</p>
+                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit documents without them ever leaving your device.</p>
                 <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg">
                     <p class="text-sm">⚠️ Previous session found.</p>
                     <button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button>
@@ -112,16 +123,32 @@
         <!-- SIDEBAR -->
         <aside id="sidebar" class="w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col flex-shrink-0 z-40 fixed md:relative h-full transition-transform transform -translate-x-full md:translate-x-0 shadow-xl md:shadow-none">
             <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800">
-                <h2 class="font-bold text-sm uppercase tracking-wider text-slate-500 dark:text-slate-400">Source Documents</h2>
-                <button id="sidebar-close-btn" class="md:hidden text-slate-400 hover:text-slate-700">✕</button>
+                <h2 class="font-bold text-sm uppercase tracking-wider text-slate-500 dark:text-slate-400">Source Files</h2>
+                <div class="flex gap-2">
+                    <button id="toggleSidebarSize" class="text-slate-400 hover:text-indigo-500" title="Collapse">«</button>
+                    <button id="sidebar-close-btn" class="md:hidden text-slate-400 hover:text-slate-700">✕</button>
+                </div>
             </div>
-            <!-- SOURCE FILES LIST -->
-            <div id="sourceFileList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll"></div>
+            
+            <div id="sourceFileList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll">
+                <!-- Empty State -->
+                <div id="empty-source-state" class="text-center py-10 opacity-50">
+                    <div class="text-4xl mb-2">📂</div>
+                    <p class="text-xs">No files added</p>
+                </div>
+            </div>
             
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3">
-                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Quick Tools</div>
-                <button id="insertBlankBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">+</span> Insert Blank Page</button>
-                <button id="openTextModalBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">T</span> Text / Watermark</button>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Actions</div>
+                <button id="insertBlankBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group">
+                    <span class="text-indigo-500 font-bold group-hover:scale-110 transition">+</span> Insert Blank Page
+                </button>
+                <button id="openTextModalBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group">
+                    <span class="text-indigo-500 font-bold group-hover:scale-110 transition">T</span> Text / Watermark
+                </button>
+                <button id="openMetadataBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group">
+                    <span class="text-indigo-500 font-bold group-hover:scale-110 transition">⚙</span> PDF Metadata
+                </button>
             </div>
         </aside>
 
@@ -130,18 +157,23 @@
             <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm z-30 px-4 py-3 flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex items-center gap-4">
                     <button id="menu-toggle-btn" class="md:hidden text-slate-500 p-2 hover:bg-slate-100 rounded">☰</button>
+                    <!-- VIEW TOGGLES -->
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-                        <button id="viewGridBtn" class="p-1.5 rounded bg-white dark:bg-slate-600 shadow-sm text-indigo-600"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
-                        <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
+                        <button id="viewGridBtn" class="p-1.5 rounded bg-white dark:bg-slate-600 shadow-sm text-indigo-600" data-tooltip="Grid View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
+                        <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500" data-tooltip="List View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
                     </div>
+                    <!-- UNDO/REDO -->
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-                        <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></button>
-                        <button id="redoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg></button>
+                        <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300" data-tooltip="Undo (Ctrl+Z)"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></button>
+                        <button id="redoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300" data-tooltip="Redo (Ctrl+Y)"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg></button>
                     </div>
+                    <!-- ZOOM -->
                     <div class="hidden sm:flex items-center gap-2">
                         <input type="range" id="zoomSlider" min="100" max="300" value="180" class="w-24 h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-indigo-600">
                     </div>
+                    <span id="auto-save-indicator" class="text-xs text-emerald-500 font-medium opacity-0 transition-opacity">Saved ✓</span>
                 </div>
+
                 <div class="flex items-center gap-3">
                     <button id="sortByNumberBtn" class="text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 transition">Sort #</button>
                     <button id="clearBtn" class="text-xs font-bold px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded transition">Clear</button>
@@ -156,9 +188,17 @@
                 </div>
             </header>
 
-            <div id="page-grid-container" class="flex-1 overflow-y-auto p-8 relative custom-scroll"><div id="page-grid" class="view-grid pb-32"></div></div>
+            <div id="page-grid-container" class="flex-1 overflow-y-auto p-8 relative custom-scroll">
+                <div id="page-grid" class="view-grid pb-32"></div>
+                <!-- Empty State for Grid -->
+                <div id="empty-grid-state" class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-50">
+                    <div class="text-6xl mb-4">📄</div>
+                    <p class="text-xl font-light">Workspace is empty</p>
+                    <p class="text-sm">Add files to get started</p>
+                </div>
+            </div>
 
-            <!-- FLOATING ISLAND (UPDATED EXPORT) -->
+            <!-- CONTEXTUAL FOOTER -->
             <footer id="contextual-footer" class="fixed bottom-8 left-1/2 -translate-x-1/2 hidden-island z-40 bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 backdrop-blur-md rounded-full shadow-2xl px-6 py-3 flex items-center gap-6 border border-slate-700 dark:border-slate-200 transition-all duration-300">
                 <div class="flex items-center gap-3 text-sm font-medium border-r border-slate-600 dark:border-slate-300 pr-6">
                     <span id="selection-count">0 selected</span>
@@ -167,28 +207,58 @@
                     <button id="deselectAllBtn" class="hover:text-slate-300 dark:hover:text-slate-600 underline decoration-dotted">None</button>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="duplicateSelectedBtn" class="p-2 hover:bg-white/10 dark:hover:bg-slate-200 rounded-full transition" title="Duplicate"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-                    <button id="rotateSelectedBtn" class="p-2 hover:bg-white/10 dark:hover:bg-slate-200 rounded-full transition" title="Rotate"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></button>
-                    <button id="deleteSelectedBtn" class="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 dark:text-red-600 dark:hover:text-red-700 rounded-full transition" title="Delete"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    <button id="duplicateSelectedBtn" class="p-2 hover:bg-white/10 dark:hover:bg-slate-200 rounded-full transition" data-tooltip="Duplicate"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                    <button id="rotateSelectedBtn" class="p-2 hover:bg-white/10 dark:hover:bg-slate-200 rounded-full transition" data-tooltip="Rotate"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></button>
+                    <button id="deleteSelectedBtn" class="p-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 dark:text-red-600 dark:hover:text-red-700 rounded-full transition" data-tooltip="Delete"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                 </div>
                 <div class="h-6 w-px bg-slate-600 dark:bg-slate-300"></div>
-                
                 <!-- SAVE/PRINT DROPDOWN -->
                 <div class="relative group">
                     <button class="bg-indigo-500 hover:bg-indigo-600 text-white pl-5 pr-3 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">
                         Export PDF <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
-                    <div class="absolute bottom-full right-0 mb-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden hidden group-hover:block">
-                        <button id="saveBtn" class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700">💾 Save File</button>
-                        <button id="printBtn" class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700">🖨 Print</button>
-                        <button id="previewBtn" class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700">👁 Preview</button>
+                    <div class="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden hidden group-hover:block text-left">
+                        <button id="saveBtn" class="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>💾</span> Save File</button>
+                        <button id="printBtn" class="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>🖨</span> Print</button>
+                        <button id="previewBtn" class="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center gap-2"><span>👁</span> Preview</button>
+                        <div class="h-px bg-slate-200 dark:bg-slate-700"></div>
+                        <div class="px-4 py-2">
+                            <label class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                                <input type="checkbox" id="addPageNumbersCheckbox" class="rounded text-indigo-600 focus:ring-indigo-500"> Add Page # (Footer)
+                            </label>
+                        </div>
                     </div>
                 </div>
             </footer>
         </main>
     </div>
 
-    <!-- TEXT EDITOR MODAL (UPDATED WITH LOCATION PICKER) -->
+    <!-- METADATA MODAL -->
+    <div id="metadata-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300">
+            <h3 class="text-xl font-bold mb-4 dark:text-white">PDF Properties</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Title</label>
+                    <input type="text" id="meta-title" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Author</label>
+                    <input type="text" id="meta-author" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Subject</label>
+                    <input type="text" id="meta-subject" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button class="close-meta-modal px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400">Cancel</button>
+                <button id="saveMetadataBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TEXT EDITOR MODAL -->
     <div id="text-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
         <div class="bg-white dark:bg-slate-800 w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300">
             <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex justify-between items-center shrink-0">
@@ -199,8 +269,13 @@
                 <div class="w-80 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex flex-col overflow-y-auto p-6 z-10 shadow-lg custom-scroll">
                     <!-- PRESETS SECTION -->
                     <div class="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Quick Presets</label>
-                        <button id="addWatermarkBtn" class="w-full bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 py-2 rounded-lg text-sm font-bold border border-indigo-200 dark:border-indigo-800 mb-4 transition">✨ Add "CONFIDENTIAL" Watermark</button>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Quick Stamps</label>
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <button class="stamp-btn w-full bg-red-100 text-red-700 border border-red-200 py-1.5 rounded text-xs font-bold" data-text="CONFIDENTIAL" data-color="#DC2626">CONFIDENTIAL</button>
+                            <button class="stamp-btn w-full bg-green-100 text-green-700 border border-green-200 py-1.5 rounded text-xs font-bold" data-text="APPROVED" data-color="#16A34A">APPROVED</button>
+                            <button class="stamp-btn w-full bg-blue-100 text-blue-700 border border-blue-200 py-1.5 rounded text-xs font-bold" data-text="DRAFT" data-color="#2563EB">DRAFT</button>
+                            <button class="stamp-btn w-full bg-yellow-100 text-yellow-700 border border-yellow-200 py-1.5 rounded text-xs font-bold" data-text="COPY" data-color="#CA8A04">COPY</button>
+                        </div>
                         
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Quick Positioning</label>
                         <div class="grid grid-cols-3 gap-2">
@@ -228,6 +303,7 @@
         </div>
     </div>
 
+    <!-- LOADER -->
     <div id="loader" class="fixed inset-0 z-[100] bg-white/90 dark:bg-slate-900/90 flex flex-col items-center justify-center hidden backdrop-blur-sm">
         <div class="w-12 h-12 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
         <p id="loader-text" class="text-slate-600 dark:text-slate-300 font-medium animate-pulse">Processing...</p>
@@ -248,10 +324,10 @@
                 req.onsuccess = e => { this.db = e.target.result; resolve(); };
             });
         }
-        async saveState(sourceFiles, pages) {
+        async saveState(sourceFiles, pages, metadata) {
             if(!this.db) await this.init();
             const serialized = sourceFiles.map(f => ({ id: f.id, name: f.name, type: f.type, file: f.file }));
-            const state = { sourceFiles: serialized, pages: pages };
+            const state = { sourceFiles: serialized, pages: pages, metadata: metadata };
             return new Promise((r, j) => { const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).put(state, 'currentState'); tx.oncomplete=r; tx.onerror=j; });
         }
         async loadState() {
@@ -265,6 +341,7 @@
     class VisualPDFTool {
         constructor() {
             this.sourceFiles = []; this.pages = []; this.selectedPageIds = new Set();
+            this.metadata = { title: '', author: '', subject: '' };
             this.historyStack = []; this.redoStack = []; this.maxHistory = 20;
             this.dbManager = new LocalStorageManager();
             this.observer = null; this.contextTargetId = null;
@@ -272,6 +349,7 @@
             
             this.pageGrid = document.getElementById('page-grid');
             this.textModal = document.getElementById('text-modal');
+            this.metaModal = document.getElementById('metadata-modal');
             this.contextMenu = document.getElementById('context-menu');
             this.init();
         }
@@ -283,6 +361,7 @@
                 await this.dbManager.init();
                 const saved = await this.dbManager.loadState();
                 if(saved && saved.pages.length > 0) {
+                    if(saved.metadata) this.metadata = saved.metadata;
                     document.getElementById('restore-banner').classList.remove('hidden');
                     document.getElementById('restoreBtn').addEventListener('click', () => this.restoreSession(saved));
                 }
@@ -301,6 +380,12 @@
             container.appendChild(el);
             requestAnimationFrame(() => el.classList.remove('translate-y-10', 'opacity-0'));
             setTimeout(() => { el.classList.add('translate-y-10', 'opacity-0'); setTimeout(() => el.remove(), 300); }, 3000);
+        }
+
+        autoSaveNotify() {
+            const indicator = document.getElementById('auto-save-indicator');
+            indicator.classList.remove('opacity-0');
+            setTimeout(() => indicator.classList.add('opacity-0'), 2000);
         }
 
         /* --- FILES --- */
@@ -337,11 +422,13 @@
             const el = document.getElementById('sourceFileList'); if(!el) return;
             const activeFiles = new Set(this.pages.map(p => p.sourceFile.id));
             const files = this.sourceFiles.filter(f => activeFiles.has(f.id) || f.type === 'blank');
+            if(files.length === 0) { document.getElementById('empty-source-state').classList.remove('hidden'); el.innerHTML = ''; document.getElementById('empty-source-state').style.display='block'; }
+            else { document.getElementById('empty-source-state').style.display='none'; 
             el.innerHTML = files.map(f => `
                 <div class="p-2.5 text-xs bg-white dark:bg-slate-700 rounded-lg mb-2 shadow-sm border border-slate-200 dark:border-slate-600 flex items-center gap-3">
                     <div class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-600 flex items-center justify-center text-lg">${f.type.includes('image')?'🖼':'📄'}</div>
                     <div class="flex-1 truncate font-medium text-slate-700 dark:text-slate-200">${f.name}</div>
-                </div>`).join('');
+                </div>`).join(''); }
         }
 
         /* --- RENDER --- */
@@ -358,6 +445,7 @@
             const item = document.createElement('div');
             item.className = 'page-item group relative cursor-pointer overflow-hidden flex flex-col h-full rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm';
             item.dataset.id = pageData.id;
+            item.setAttribute('tabindex', '0'); // Accessibility
             const hasText = pageData.textOverlays && pageData.textOverlays.length > 0;
             const badgeHtml = hasText ? '<div class="absolute top-2 right-2 bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow z-10">T</div>' : '';
             item.innerHTML = `
@@ -369,7 +457,7 @@
                 </div>
                 <div class="page-info px-3 py-2 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 text-xs flex justify-between items-center h-10">
                     <div class="flex flex-col min-w-0"><span class="font-medium text-slate-700 dark:text-slate-200 truncate">${pageData.sourceFile.name}</span><span class="text-[10px] text-slate-400">Page ${pageData.sourcePageIndex + 1}</span></div>
-                    <div class="page-actions flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button class="rotate-ccw-btn hover:text-indigo-600 text-slate-400 p-1">↶</button><input type="text" class="page-order-input w-6 text-center bg-transparent font-bold text-slate-500" value="${index + 1}" disabled><button class="rotate-cw-btn hover:text-indigo-600 text-slate-400 p-1">↷</button></div>
+                    <div class="page-actions flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button class="rotate-ccw-btn hover:text-indigo-600 text-slate-400 p-1" data-tooltip="Rotate Left">↶</button><input type="text" class="page-order-input w-6 text-center bg-transparent font-bold text-slate-500" value="${index + 1}" disabled><button class="rotate-cw-btn hover:text-indigo-600 text-slate-400 p-1" data-tooltip="Rotate Right">↷</button></div>
                 </div>`;
             item.querySelector('.page-checkbox').addEventListener('click', (e) => { e.stopPropagation(); this.toggleSelection(pageData.id); });
             this.pageGrid.appendChild(item);
@@ -438,13 +526,13 @@
             } else { controls.classList.add('opacity-50', 'pointer-events-none'); }
         }
         addTextLayerToEditor() { const text = document.getElementById('txt-content').value || "New Text"; this.tempTextOverlays.push({ text, xPercent: 50, yPercent: 50, size: 24, color: '#000000', opacity: 1, rotation: 0, font: 'Helvetica' }); this.activeTextIndex = this.tempTextOverlays.length - 1; this.renderOverlayLayers(); }
-        // NEW: WATERMARK
-        addWatermark() { this.tempTextOverlays.push({ text: "CONFIDENTIAL", xPercent: 50, yPercent: 50, size: 80, color: '#FF0000', opacity: 0.2, rotation: 45, font: 'Helvetica' }); this.activeTextIndex = this.tempTextOverlays.length - 1; this.renderOverlayLayers(); }
-        // NEW: POSITION PRESETS
+        
+        // NEW: PRESETS AND STAMPS
+        addStamp(text, color) { this.tempTextOverlays.push({ text: text, xPercent: 50, yPercent: 50, size: 60, color: color, opacity: 0.3, rotation: 45, font: 'Helvetica' }); this.activeTextIndex = this.tempTextOverlays.length - 1; this.renderOverlayLayers(); }
         setTextPosition(pos) { if(this.activeTextIndex === -1) return; const l = this.tempTextOverlays[this.activeTextIndex]; 
-            const m = 10; // margin
-            if(pos.includes('l')) l.xPercent = m; if(pos.includes('r')) l.xPercent = 100-m; if(pos.includes('c')) { if(pos[1]==='c') l.xPercent=50; else if(pos[0]!=='c') l.xPercent=50; }
-            if(pos.includes('t')) l.yPercent = m; if(pos.includes('b')) l.yPercent = 100-m; if(pos.includes('c')) { if(pos[0]==='c') l.yPercent=50; else if(pos[1]!=='c') l.yPercent=50; }
+            const m = 10; 
+            if(pos.includes('l')) l.xPercent = m; if(pos.includes('r')) l.xPercent = 100-m; if(pos.includes('c') && pos[0] !== 'c') l.xPercent=50; else if(pos=='cc') l.xPercent=50;
+            if(pos.includes('t')) l.yPercent = m; if(pos.includes('b')) l.yPercent = 100-m; if(pos.includes('c') && pos[1] !== 'c') l.yPercent=50; else if(pos=='cc') l.yPercent=50;
             this.renderOverlayLayers();
         }
         
@@ -455,6 +543,20 @@
         startDrag(e, index, container) { let isDragging = true; const rect = container.getBoundingClientRect(); const moveHandler = (ev) => { if(!isDragging) return; const x = ev.clientX - rect.left; const y = ev.clientY - rect.top; this.tempTextOverlays[index].xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100)); this.tempTextOverlays[index].yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100)); this.renderOverlayLayers(); }; const upHandler = () => { isDragging = false; document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', upHandler); }; document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', upHandler); }
         savePageEdits() { this.saveState(); const page = this.pages.find(p => p.id === this.editingPageId); page.textOverlays = JSON.parse(JSON.stringify(this.tempTextOverlays)); page.rotation = this.tempRotation; this.showToast("Changes saved"); this.renderAllPages(); this.textModal.classList.add('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.add('scale-95'); }
 
+        // METADATA
+        openMetadataModal() {
+            document.getElementById('meta-title').value = this.metadata.title;
+            document.getElementById('meta-author').value = this.metadata.author;
+            document.getElementById('meta-subject').value = this.metadata.subject;
+            this.metaModal.classList.remove('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.remove('scale-95');
+        }
+        saveMetadata() {
+            this.metadata.title = document.getElementById('meta-title').value;
+            this.metadata.author = document.getElementById('meta-author').value;
+            this.metadata.subject = document.getElementById('meta-subject').value;
+            this.saveState(); this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); this.showToast("Metadata saved");
+        }
+
         /* --- INTERACTIONS --- */
         initContextMenu() {
             document.addEventListener('click', () => this.contextMenu.classList.add('hidden'));
@@ -462,8 +564,8 @@
             this.safeAddListener('ctx-edit', 'click', () => this.openPageEditor(this.contextTargetId)); this.safeAddListener('ctx-delete', 'click', () => this.deletePages([this.contextTargetId])); this.safeAddListener('ctx-duplicate', 'click', () => { this.selectedPageIds.clear(); this.selectedPageIds.add(this.contextTargetId); this.duplicateSelected(); }); this.safeAddListener('ctx-rotate-cw', 'click', () => this.rotatePages([this.contextTargetId], 90)); this.safeAddListener('ctx-rotate-ccw', 'click', () => this.rotatePages([this.contextTargetId], -90));
         }
         async restoreSession(saved) { this.showLoader(true, 'Restoring Session...'); this.sourceFiles = []; for (const f of saved.sourceFiles) { const source = { id: f.id, name: f.name, type: f.type, file: f.file }; if(f.type === 'application/pdf') { const ab = await f.file.arrayBuffer(); source.pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise; source.pdfLibDoc = await PDFLib.PDFDocument.load(ab); } this.sourceFiles.push(source); } this.pages = []; saved.pages.forEach(p => { const source = this.sourceFiles.find(s => s.id === p.sourceFileId); if(source) this.pages.push({ id: p.id, sourceFile: source, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: p.textOverlays }); }); document.getElementById('start-screen').classList.add('hidden'); document.querySelector('.app-container').classList.remove('hidden'); this.renderAllPages(); this.updateStatus(); this.showLoader(false); }
-        saveState() { const snapshot = this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])) })); this.historyStack.push(snapshot); if(this.historyStack.length > this.maxHistory) this.historyStack.shift(); this.redoStack = []; this.updateHistoryButtons(); this.dbManager.saveState(this.sourceFiles, snapshot); }
-        restoreState(snapshot) { this.pages = []; snapshot.forEach(item => { const source = this.sourceFiles.find(f => f.id === item.sourceFileId); if(source) this.pages.push({ id: item.id, sourceFile: source, sourcePageIndex: item.sourcePageIndex, type: item.type, rotation: item.rotation, textOverlays: item.textOverlays || [] }); }); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.dbManager.saveState(this.sourceFiles, snapshot); }
+        saveState() { const snapshot = this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])) })); this.historyStack.push(snapshot); if(this.historyStack.length > this.maxHistory) this.historyStack.shift(); this.redoStack = []; this.updateHistoryButtons(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata); this.autoSaveNotify(); }
+        restoreState(snapshot) { this.pages = []; snapshot.forEach(item => { const source = this.sourceFiles.find(f => f.id === item.sourceFileId); if(source) this.pages.push({ id: item.id, sourceFile: source, sourcePageIndex: item.sourcePageIndex, type: item.type, rotation: item.rotation, textOverlays: item.textOverlays || [] }); }); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata); }
         performUndo() { if(this.historyStack.length) { this.redoStack.push(this.snapshotCurrentState()); this.restoreState(this.historyStack.pop()); this.updateHistoryButtons(); } }
         performRedo() { if(this.redoStack.length) { this.historyStack.push(this.snapshotCurrentState()); this.restoreState(this.redoStack.pop()); this.updateHistoryButtons(); } }
         snapshotCurrentState() { return this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])) })); }
@@ -480,10 +582,16 @@
         sortByNumber() { this.saveState(); const map = new Map(); document.querySelectorAll('.page-order-input').forEach(i => map.set(i.closest('.page-item').dataset.id, parseInt(i.value) || 9999)); this.pages.sort((a, b) => map.get(a.id) - map.get(b.id)); this.renderAllPages(); this.showToast('Sorted by number'); }
         updateDataOrderFromDOM() { const newPages = []; [...this.pageGrid.children].forEach(el => newPages.push(this.pages.find(p => p.id === el.dataset.id))); this.pages = newPages; this.renderAllPages(); }
         updateStatus() { this.updateSelectionUI(); if(this.pages.length === 0) this.clearWorkspace(); }
-        async clearWorkspace() { this.saveState(); this.pages = []; this.sourceFiles = []; this.selectedPageIds.clear(); this.renderAllPages(); document.getElementById('start-screen').classList.remove('hidden'); document.querySelector('.app-container').classList.add('hidden'); await this.dbManager.clear(); }
+        async clearWorkspace() { if(!confirm("Are you sure? This will remove all pages and files.")) return; this.saveState(); this.pages = []; this.sourceFiles = []; this.selectedPageIds.clear(); this.renderAllPages(); document.getElementById('start-screen').classList.remove('hidden'); document.querySelector('.app-container').classList.add('hidden'); await this.dbManager.clear(); }
         showLoader(show, text = 'Processing...') { const loader = document.getElementById('loader'); if(loader) { loader.classList.toggle('hidden', !show); document.getElementById('loader-text').innerText = text; } }
         toggleSidebar(show){ document.querySelector('.app-container').classList.toggle('sidebar-mobile-open', show); document.getElementById('sidebar-overlay').classList.toggle('hidden', !show); if(show) document.getElementById('sidebar').classList.remove('-translate-x-full'); else document.getElementById('sidebar').classList.add('-translate-x-full'); }
-        
+        toggleSidebarSize() { 
+            const sb = document.getElementById('sidebar'); 
+            sb.classList.toggle('w-72'); sb.classList.toggle('w-16'); 
+            const labels = sb.querySelectorAll('.text-sm, .text-xs, .truncate'); 
+            labels.forEach(l => l.classList.toggle('hidden'));
+        }
+
         initMarqueeSelection() {
             const container = document.getElementById('page-grid-container'); if(!container) return; let isSelecting=false, startX, startY, marquee=null;
             container.addEventListener('mousedown', e => { if(e.target !== container && e.target !== document.getElementById('page-grid')) return; isSelecting=true; const rect=container.getBoundingClientRect(); startX=e.clientX-rect.left+container.scrollLeft; startY=e.clientY-rect.top+container.scrollTop; marquee=document.createElement('div'); marquee.className='marquee-box'; marquee.style.left=startX+'px'; marquee.style.top=startY+'px'; container.appendChild(marquee); if(!e.ctrlKey&&!e.shiftKey) { this.selectedPageIds.clear(); this.updateSelectionUI(); } });
@@ -491,7 +599,14 @@
             document.addEventListener('mouseup', () => { if(!isSelecting) return; isSelecting=false; if(marquee) { const marqueeRect=marquee.getBoundingClientRect(); document.querySelectorAll('.page-item').forEach(item => { const itemRect=item.getBoundingClientRect(); if (marqueeRect.left<itemRect.right && marqueeRect.right>itemRect.left && marqueeRect.top<itemRect.bottom && marqueeRect.bottom>itemRect.top) { this.selectedPageIds.add(item.dataset.id); } }); marquee.remove(); } this.updateSelectionUI(); });
         }
         initEventListeners() {
-            document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); this.performUndo(); } if ((e.ctrlKey||e.metaKey) && e.key === 'y') { e.preventDefault(); this.performRedo(); } if ((e.key === 'Delete'||e.key === 'Backspace') && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) this.deleteSelectedPages(); if ((e.ctrlKey||e.metaKey) && e.key === 'a') { e.preventDefault(); this.pages.forEach(p=>this.selectedPageIds.add(p.id)); this.updateSelectionUI(); } });
+            document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); this.performUndo(); } if ((e.ctrlKey||e.metaKey) && e.key === 'y') { e.preventDefault(); this.performRedo(); } if ((e.key === 'Delete'||e.key === 'Backspace') && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) this.deleteSelectedPages(); if ((e.ctrlKey||e.metaKey) && e.key === 'a') { e.preventDefault(); this.pages.forEach(p=>this.selectedPageIds.add(p.id)); this.updateSelectionUI(); } 
+                // Grid Nav
+                if(['ArrowRight','ArrowLeft'].includes(e.key) && document.activeElement.classList.contains('page-item')) {
+                    const items = [...document.querySelectorAll('.page-item')]; const idx = items.indexOf(document.activeElement);
+                    if(e.key==='ArrowRight' && idx < items.length-1) items[idx+1].focus();
+                    if(e.key==='ArrowLeft' && idx > 0) items[idx-1].focus();
+                }
+            });
             window.addEventListener('beforeunload', e => { if (this.pages.length > 0) { e.preventDefault(); e.returnValue = ''; } });
             this.safeAddListener('undoBtn', 'click', () => this.performUndo()); this.safeAddListener('redoBtn', 'click', () => this.performRedo());
             this.safeAddListener('zoomSlider', 'input', e => document.documentElement.style.setProperty('--grid-size', `${e.target.value}px`));
@@ -501,6 +616,7 @@
             this.safeAddListener('addFilesBtn', 'click', () => document.getElementById('fileInput').click()); this.safeAddListener('startChooseFileBtn', 'click', () => document.getElementById('fileInput').click());
             this.safeAddListener('fileInput', 'change', async (e) => { await this.addFiles(Array.from(e.target.files)); e.target.value = ''; });
             this.safeAddListener('sidebar-close-btn', 'click', () => this.toggleSidebar(false)); this.safeAddListener('menu-toggle-btn', 'click', () => this.toggleSidebar(true));
+            this.safeAddListener('toggleSidebarSize', 'click', () => this.toggleSidebarSize());
             this.safeAddListener('insertBlankBtn', 'click', () => this.insertBlankPage());
             this.safeAddListener('openTextModalBtn', 'click', () => { if(this.pages.length > 0) this.openPageEditor(this.pages[0].id); else this.showToast('Add pages first', 'error'); });
             const closeText = document.querySelector('.close-text-modal'); if(closeText) closeText.addEventListener('click', () => { this.textModal.classList.add('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.add('scale-95'); });
@@ -515,13 +631,14 @@
             this.safeAddListener('duplicateSelectedBtn', 'click', () => this.duplicateSelected());
             this.safeAddListener('sortByNumberBtn', 'click', () => this.sortByNumber());
             this.safeAddListener('clearBtn', 'click', () => this.clearWorkspace());
-            // NEW: Footer Exports
             this.safeAddListener('saveBtn', 'click', () => this.createPdf());
-            this.safeAddListener('printBtn', 'click', () => this.createPdf(false, true)); // Print Mode
-            this.safeAddListener('previewBtn', 'click', () => this.createPdf(true)); // Preview Mode
-            // NEW: Editor Features
-            this.safeAddListener('addWatermarkBtn', 'click', () => this.addWatermark());
+            this.safeAddListener('printBtn', 'click', () => this.createPdf(false, true));
+            this.safeAddListener('previewBtn', 'click', () => this.createPdf(true));
+            this.safeAddListener('openMetadataBtn', 'click', () => this.openMetadataModal());
+            this.safeAddListener('saveMetadataBtn', 'click', () => this.saveMetadata());
+            const closeMeta = document.querySelector('.close-meta-modal'); if(closeMeta) closeMeta.addEventListener('click', () => { this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); });
             document.querySelectorAll('.pos-btn').forEach(btn => btn.addEventListener('click', e => this.setTextPosition(e.target.dataset.pos)));
+            document.querySelectorAll('.stamp-btn').forEach(btn => btn.addEventListener('click', e => this.addStamp(e.target.dataset.text, e.target.dataset.color)));
 
             this.pageGrid.addEventListener('click', this.handlePageClick.bind(this));
             this.pageGrid.addEventListener('dblclick', e => { const item = e.target.closest('.page-item'); if (item) this.openPageEditor(item.dataset.id); });
@@ -534,9 +651,11 @@
             if (!this.pages.length) return; this.showLoader(true, 'Generating PDF...');
             try {
                 const doc = await PDFLib.PDFDocument.create();
+                doc.setTitle(this.metadata.title); doc.setAuthor(this.metadata.author); doc.setSubject(this.metadata.subject);
                 const fonts = { 'Helvetica': await doc.embedFont(PDFLib.StandardFonts.Helvetica), 'TimesRoman': await doc.embedFont(PDFLib.StandardFonts.TimesRoman), 'Courier': await doc.embedFont(PDFLib.StandardFonts.Courier) };
-                for (const p of this.pages) {
-                    let page;
+                const addPageNum = document.getElementById('addPageNumbersCheckbox').checked;
+                for (let i=0; i<this.pages.length; i++) {
+                    const p = this.pages[i]; let page;
                     if (p.type === 'blank') page = doc.addPage([595, 842]);
                     else if (p.type === 'image') {
                         const buff = await p.sourceFile.file.arrayBuffer(); const emb = p.sourceFile.type.includes('png') ? await doc.embedPng(buff) : await doc.embedJpg(buff); const r = p.rotation % 360; const isRotated = r === 90 || r === 270;
@@ -546,6 +665,7 @@
                         page.drawImage(emb, opts);
                     } else { const [cp] = await doc.copyPages(p.sourceFile.pdfLibDoc, [p.sourcePageIndex]); cp.setRotation(PDFLib.degrees((cp.getRotation().angle + p.rotation) % 360)); page = doc.addPage(cp); }
                     if (p.textOverlays) { const { width, height } = page.getSize(); p.textOverlays.forEach(t => { const x = width * (t.xPercent / 100); const y = height - (height * (t.yPercent / 100)); page.drawText(t.text, { x, y, size: t.size, font: fonts[t.font] || fonts['Helvetica'], color: PDFLib.rgb(this.hexToRgb(t.color).r, this.hexToRgb(t.color).g, this.hexToRgb(t.color).b), opacity: t.opacity || 1, rotate: PDFLib.degrees(t.rotation || 0), xCentered: true, yCentered: true }); }); }
+                    if (addPageNum) { const { width } = page.getSize(); page.drawText(`${i+1} / ${this.pages.length}`, { x: width/2, y: 20, size: 10, font: fonts['Helvetica'], color: PDFLib.rgb(0,0,0), xCentered: true }); }
                 }
                 const pdfBytes = await doc.save(); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); const url = URL.createObjectURL(blob);
                 if (preview) window.open(url, '_blank');
