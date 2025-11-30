@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visual PDF Editor Pro (Secure)</title>
 
-    <script src="js/pdf-lib.min.js" defer></script>
-    <script src="js/pdf.min.js" defer></script>
-    <script src="js/sortable.min.js" defer></script>
-    <script src="js/tailwindcss.js"></script>
+    <!-- LIBRARIES: CDN for immediate testing. 
+         FOR OFFLINE/HIPAA: Download these 4 files to a 'js/' folder and change src="js/filename.js" -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
         tailwind.config = {
@@ -121,8 +123,8 @@
             <div id="sourceFileList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll"></div>
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3">
                 <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tools</div>
-                <button id="insertBlankBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">+</span> Insert Blank Page</button>
-                <button id="openTextModalBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">T</span> Text Editor</button>
+                <button id="insertBlankBtn" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">+</span> Insert Blank Page</button>
+                <button id="openTextModalBtn" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm"><span class="text-indigo-500 font-bold">T</span> Text Editor</button>
             </div>
         </aside>
 
@@ -163,7 +165,6 @@
                 </div>
             </header>
 
-            <!-- CANVAS / GRID -->
             <div id="page-grid-container" class="flex-1 overflow-y-auto p-8 relative custom-scroll">
                 <div id="page-grid" class="view-grid pb-32"></div>
             </div>
@@ -216,8 +217,9 @@
     </div>
 
     <script>
-    // --- CONFIG ---
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
+    // --- WORKER CONFIGURATION ---
+    // Change to 'js/pdf.worker.min.js' for HIPAA/Local mode
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     /* --- PERSISTENCE --- */
     class LocalStorageManager {
@@ -450,7 +452,10 @@
         async clearWorkspace() { this.saveState(); this.pages = []; this.sourceFiles = []; this.selectedPageIds.clear(); this.renderAllPages(); document.getElementById('start-screen').classList.remove('hidden'); document.querySelector('.app-container').classList.add('hidden'); await this.dbManager.clear(); }
         showLoader(show, text = 'Processing...') { const loader = document.getElementById('loader'); if(loader) { loader.classList.toggle('hidden', !show); document.getElementById('loader-text').innerText = text; } }
         toggleSidebar(show){ document.querySelector('.app-container').classList.toggle('sidebar-mobile-open', show); document.getElementById('sidebar-overlay').classList.toggle('hidden', !show); if(show) document.getElementById('sidebar').classList.remove('-translate-x-full'); else document.getElementById('sidebar').classList.add('-translate-x-full'); }
+        
+        // --- ADDED MISSING METHOD ---
         checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark'); }
+
         initMarqueeSelection() {
             const container = document.getElementById('page-grid-container'); if(!container) return; let isSelecting=false, startX, startY, marquee=null;
             container.addEventListener('mousedown', e => { if(e.target !== container && e.target !== document.getElementById('page-grid')) return; isSelecting=true; const rect=container.getBoundingClientRect(); startX=e.clientX-rect.left+container.scrollLeft; startY=e.clientY-rect.top+container.scrollTop; marquee=document.createElement('div'); marquee.className='marquee-box'; marquee.style.left=startX+'px'; marquee.style.top=startY+'px'; container.appendChild(marquee); if(!e.ctrlKey&&!e.shiftKey) { this.selectedPageIds.clear(); this.updateSelectionUI(); } });
