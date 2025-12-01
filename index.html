@@ -379,27 +379,46 @@
         
         // FILES
         async addFiles(files) {
-            if (files.length === 0) return;
-            this.saveState(); this.showLoader(true, 'Processing Files...');
-            if (this.pages.length === 0) { document.getElementById('start-screen').classList.add('hidden'); document.querySelector('.app-container').classList.remove('hidden'); }
-            for (const file of files) {
-                const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                const sourceFile = { id: fileId, name: file.name, type: file.type, file: file };
-                if (file.type.startsWith('image/')) { this.sourceFiles.push(sourceFile); this.addPageToData(sourceFile, 0, 'image'); } 
-                else if (file.type === 'application/pdf') {
-                    try { 
-                        const arrayBuffer = await file.arrayBuffer(); 
-                        const bufferCopy = arrayBuffer.slice(0); // Clone for the second library
-                        sourceFile.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise; 
-                        sourceFile.pdfLibDoc = await PDFLib.PDFDocument.load(bufferCopy); 
-                        
-                        this.sourceFiles.push(sourceFile); 
-                        for (let i = 0; i < sourceFile.pdfDoc.numPages; i++) { this.addPageToData(sourceFile, i, 'pdf'); } 
-                    } catch (err) { console.error(err); this.showToast(`Error loading ${file.name}`, 'error'); }
-                }
+    if (files.length === 0) return;
+    
+    this.showLoader(true, 'Processing Files...');
+    
+    if (this.pages.length === 0) { 
+        document.getElementById('start-screen').classList.add('hidden'); 
+        document.querySelector('.app-container').classList.remove('hidden'); 
+    }
+
+    for (const file of files) {
+        const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const sourceFile = { id: fileId, name: file.name, type: file.type, file: file };
+
+        if (file.type.startsWith('image/')) { 
+            this.sourceFiles.push(sourceFile); 
+            this.addPageToData(sourceFile, 0, 'image'); 
+        } 
+        else if (file.type === 'application/pdf') {
+            try { 
+                const arrayBuffer = await file.arrayBuffer(); 
+                const bufferCopy = arrayBuffer.slice(0); 
+                sourceFile.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise; 
+                sourceFile.pdfLibDoc = await PDFLib.PDFDocument.load(bufferCopy); 
+                
+                this.sourceFiles.push(sourceFile); 
+                for (let i = 0; i < sourceFile.pdfDoc.numPages; i++) { 
+                    this.addPageToData(sourceFile, i, 'pdf'); 
+                } 
+            } catch (err) { 
+                console.error(err); 
+                this.showToast(`Error loading ${file.name}`, 'error'); 
             }
-            this.updateSourceFileList(); this.renderNewPages(); this.updateStatus(); this.showLoader(false);
         }
+    }
+    this.updateSourceFileList(); 
+    this.renderNewPages(); 
+    this.updateStatus(); 
+    await this.saveState(); 
+    this.showLoader(false);
+}
         addPageToData(sourceFile, index, type) { this.pages.push({ id: `page_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, sourceFile: sourceFile, sourcePageIndex: index, type: type, rotation: 0, brightness: 100, contrast: 100, crop: {x:0, y:0, w:1, h:1}, textOverlays: [] }); }
         insertBlankPage() { this.saveState(); let blankSource = this.sourceFiles.find(f => f.id === 'virtual_blank'); if (!blankSource) { blankSource = { id: 'virtual_blank', name: 'Blank Page', type: 'blank' }; this.sourceFiles.push(blankSource); } this.addPageToData(blankSource, 0, 'blank'); this.renderNewPages(); this.updateStatus(); }
         updateSourceFileList() {
@@ -721,6 +740,15 @@
         }
     }
     document.addEventListener('DOMContentLoaded', () => new VisualPDFTool());
+    </script>
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker Registered'))
+                .catch(err => console.log('Service Worker Error:', err));
+        });
+    }
     </script>
 </body>
 </html>
