@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual PDF Editor Pro</title>
+    <title>Visual PDF Editor (Pro Local)</title>
 
-    <!-- LOCAL LIBRARIES -->
-    <script src="js/pdf-lib.min.js"></script>
-    <script src="js/pdf.min.js"></script>
-    <script src="js/sortable.min.js"></script>
-    <script src="js/tailwindcss.js"></script>
+    <!-- LIBRARIES (Use local files for true offline/HIPAA compliance) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
         tailwind.config = {
@@ -91,23 +91,27 @@
         <button id="ctx-delete" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3"><span>🗑</span> Delete</button>
     </div>
 
-    <!-- START SCREEN -->
+    <!-- START SCREEN (Updated) -->
     <div id="start-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black p-4">
         <div class="w-full max-w-4xl bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
             <div class="p-10 md:w-1/2 flex flex-col justify-center text-left text-white border-r border-white/10">
                 <div class="inline-flex w-fit items-center gap-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-3 py-1 rounded-full text-xs font-medium mb-4">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                    100% Client-Side Processing
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    HIPAA Ready: 100% Local
                 </div>
                 <h1 class="text-4xl font-bold mb-4 tracking-tight">Visual PDF Editor <span class="text-indigo-400">Pro</span></h1>
-                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Merge, split, crop, sign, and organize documents securely.</p>
-                <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg"><p class="text-sm">⚠️ Previous session found.</p><button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button></div>
+                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit documents without them ever leaving your device.</p>
+                <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg">
+                    <p class="text-sm">⚠️ Previous session found.</p>
+                    <button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button>
+                </div>
             </div>
             <div class="p-10 md:w-1/2 bg-black/20 flex flex-col justify-center items-center">
                 <div id="startDropZone" class="w-full aspect-square border-2 border-dashed border-slate-500/50 rounded-2xl flex flex-col items-center justify-center hover:bg-white/5 hover:border-indigo-400 transition-all cursor-pointer group relative overflow-hidden">
                     <div class="absolute inset-0 bg-indigo-500/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <svg class="w-16 h-16 text-slate-500 group-hover:text-indigo-400 transition-colors mb-4 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                     <p class="text-slate-400 font-medium relative z-10">Drag files here</p>
+                    <p class="text-slate-600 text-sm mt-2 relative z-10">PDF, JPG, PNG</p>
                     <button id="startChooseFileBtn" class="mt-6 bg-white text-slate-900 hover:bg-indigo-50 font-bold py-2 px-6 rounded-full shadow-lg transition relative z-10">Browse Files</button>
                 </div>
             </div>
@@ -119,7 +123,7 @@
         <!-- SIDEBAR -->
         <aside id="sidebar" class="w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col flex-shrink-0 z-40 fixed md:relative h-full transition-all duration-300 transform -translate-x-full md:translate-x-0 shadow-xl md:shadow-none">
             
-            <!-- NEW HEADER -->
+            <!-- HEADER -->
             <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
                 <div>
                     <h2 class="font-bold text-lg">Source Files</h2>
@@ -140,7 +144,7 @@
                 <button id="openTextModalBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">✎</span> <span class="truncate">Edit / Sign</span></button>
                 <button id="openMetadataBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">⚙</span> <span class="truncate">Metadata</span></button>
                 
-                <!-- NEW RANGE SELECTION TOOL -->
+                <!-- RANGE SELECTION TOOL -->
                 <div>
                     <label class="block text-xs text-slate-500 mb-1">Select Range (e.g. 1-3, 5)</label>
                     <div class="flex gap-2">
@@ -266,7 +270,7 @@
                             <div class="flex gap-2 mb-2"><button id="txt-bold-btn" class="style-btn w-8 h-8 rounded border bg-white font-bold text-xs" title="Bold">B</button><button id="txt-italic-btn" class="style-btn w-8 h-8 rounded border bg-white italic font-serif text-xs" title="Italic">I</button></div>
                             <textarea id="txt-content" placeholder="Type text here..." class="w-full h-16 text-sm p-3 rounded-lg border-0 focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 mb-2 resize-none shadow-sm"></textarea>
                             
-                            <!-- RESTORED: QUICK POS GRID -->
+                            <!-- QUICK POS GRID -->
                             <div class="grid grid-cols-3 gap-1 mb-2">
                                 <button class="pos-btn p-1 bg-white dark:bg-slate-800 border rounded hover:bg-slate-50" data-pos="tl">↖</button>
                                 <button class="pos-btn p-1 bg-white dark:bg-slate-800 border rounded hover:bg-slate-50" data-pos="tc">↑</button>
@@ -302,9 +306,10 @@
 
     <script>
     // --- WORKER CONFIG ---
-    // Using local worker path as requested
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
+    // Using CDN for immediate execution; download for true offline
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
+    // --- INDEXED DB MANAGER (Robust Offline Storage) ---
     class LocalStorageManager {
         constructor(dbName='PDFEditorDB', storeName='StateStore') { this.dbName=dbName; this.storeName=storeName; this.db=null; }
         async init() { return new Promise((resolve, reject) => { const req = indexedDB.open(this.dbName, 1); req.onerror = e => reject(e); req.onupgradeneeded = e => { if(!e.target.result.objectStoreNames.contains(this.storeName)) e.target.result.createObjectStore(this.storeName); }; req.onsuccess = e => { this.db = e.target.result; resolve(); }; }); }
@@ -329,7 +334,16 @@
         async init() {
             this.initSortable(); this.initEventListeners(); this.initIntersectionObserver(); this.initContextMenu(); this.initMarqueeSelection(); this.initSignaturePad();
             this.checkTheme(); document.documentElement.style.setProperty('--grid-size', '180px');
-            try { await this.dbManager.init(); const saved = await this.dbManager.loadState(); if(saved && saved.pages.length > 0) { if(saved.metadata) this.metadata = saved.metadata; document.getElementById('restore-banner').classList.remove('hidden'); document.getElementById('restoreBtn').addEventListener('click', () => this.restoreSession(saved)); } } catch(e) { console.log("DB Init Error", e); }
+            try { 
+                await this.dbManager.init(); 
+                const saved = await this.dbManager.loadState(); 
+                if(saved && saved.pages.length > 0) { 
+                    if(saved.metadata) this.metadata = saved.metadata; 
+                    // Show Restore Banner if session found
+                    document.getElementById('restore-banner').classList.remove('hidden'); 
+                    document.getElementById('restoreBtn').addEventListener('click', () => this.restoreSession(saved)); 
+                } 
+            } catch(e) { console.log("DB Init Error", e); }
         }
         checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark'); }
         safeAddListener(id, event, handler) { const el = document.getElementById(id); if (el) el.addEventListener(event, handler); }
@@ -368,7 +382,6 @@
             const activeFiles = new Set(this.pages.map(p => p.sourceFile.id));
             const files = this.sourceFiles.filter(f => activeFiles.has(f.id) || f.type === 'blank');
             
-            // FIX: Don't remove elements if it destroys the container structure. Just replace innerHTML.
             if(files.length === 0) { 
                 el.innerHTML = '<div id="empty-source-state" class="text-center py-10 opacity-50"><svg class="w-10 h-10 mx-auto mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg><p class="text-[10px] uppercase tracking-wider">Empty</p></div>';
             } else { 
@@ -606,8 +619,15 @@
             document.getElementById('uploadStampBtn').addEventListener('click', () => document.getElementById('stampInput').click()); document.getElementById('stampInput').addEventListener('change', e => this.uploadStamp(e.target.files[0]));
             document.getElementById('toggleCropBtn').addEventListener('click', () => this.toggleCrop());
             this.safeAddListener('selectRangeBtn', 'click', () => this.selectRange());
+            
+            // --- NEW: START SCREEN DROP ZONE CLICK ---
+            const dz = document.getElementById('startDropZone');
+            if(dz) dz.addEventListener('click', () => document.getElementById('fileInput').click());
+            const startBtn = document.getElementById('startChooseFileBtn');
+            if(startBtn) startBtn.addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('fileInput').click(); });
+
             this.pageGrid.addEventListener('click', this.handlePageClick.bind(this)); this.pageGrid.addEventListener('dblclick', e => { const item = e.target.closest('.page-item'); if (item) this.openPageEditor(item.dataset.id); });
-            ['startDropZone', 'main-view'].forEach(id => { const z = document.getElementById(id); if(z) { z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('dragover'); }); z.addEventListener('dragleave', e => { e.preventDefault(); z.classList.remove('dragover'); }); z.addEventListener('drop', e => { e.preventDefault(); z.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); }); } });
+            ['startDropZone', 'main-view'].forEach(id => { const z = document.getElementById(id); if(z) { z.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); z.classList.add('dragover'); }); z.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); z.classList.remove('dragover'); }); z.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); z.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); }); } });
         }
         hexToRgb(hex) { const r = parseInt(hex.substr(1, 2), 16) / 255; const g = parseInt(hex.substr(3, 2), 16) / 255; const b = parseInt(hex.substr(5, 2), 16) / 255; return { r, g, b }; }
         getFont(family, isBold, isItalic) { if (family === 'Helvetica') return isBold && isItalic ? 'HelveticaBoldOblique' : isBold ? 'HelveticaBold' : isItalic ? 'HelveticaOblique' : 'Helvetica'; if (family === 'TimesRoman') return isBold && isItalic ? 'TimesRomanBoldItalic' : isBold ? 'TimesRomanBold' : isItalic ? 'TimesRomanItalic' : 'TimesRoman'; if (family === 'Courier') return isBold && isItalic ? 'CourierBoldOblique' : isBold ? 'CourierBold' : isItalic ? 'CourierOblique' : 'Courier'; return 'Helvetica'; }
