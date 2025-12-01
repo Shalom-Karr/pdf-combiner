@@ -1,6 +1,8 @@
-# Visual PDF Editor
+# Visual PDF Editor Pro
 
-A powerful, browser-based toolkit for visually merging, splitting, reordering, and managing PDF and image pages with a modern drag-and-drop interface. Your files are processed entirely on your computer, ensuring 100% privacy.
+A professional-grade, browser-based toolkit for visually merging, splitting, editing, signing, and organizing PDF documents. 
+
+**100% Client-Side Processing:** All file manipulations happen directly in your browser. Your documents are never uploaded to a server, ensuring absolute privacy and security.
 
 ## Live Demo
 
@@ -8,46 +10,67 @@ A powerful, browser-based toolkit for visually merging, splitting, reordering, a
 
 ## Key Features
 
--   **Visual Page Management**: See thumbnails of every page. Drag and drop individual pages to reorder them, even between different uploaded documents.
--   **Merge & Combine**: Seamlessly merge multiple PDFs and images into a single, unified PDF document.
--   **Split & Extract**: Select only the pages you need (using click, shift-click, or checkboxes) and export them as a new PDF.
--   **Delete Pages**: Easily remove unwanted pages with a single click or by selecting multiple pages and deleting them in bulk.
--   **Precise Reordering**: Arrange pages visually with drag-and-drop or assign specific page numbers and sort the entire workspace instantly.
--   **Multi-Format Support**: Works flawlessly with PDF, JPG, and PNG files.
--   **Page Rotation**: Correct page orientation with ease. Rotate individual pages or multiple selected pages clockwise and counter-clockwise in 90-degree increments.
--   **Export Options**:
-    -   **Save**: Download your final PDF with a custom name.
-    -   **Preview**: Open the generated PDF in a new tab to review it before saving.
-    -   **Print**: Send the final PDF directly to your printer without leaving the app.
--   **100% Client-Side & Private**: All processing happens in your browser. Your files are never uploaded to a server, guaranteeing your data remains secure and private.
--   **Modern UI/UX**: A clean, responsive, and intuitive interface designed for a smooth and efficient workflow.
+### 🎨 Advanced Page Editor
+*   **Text Overlays**: Add text to any page with customizable fonts (Helvetica, Times, Courier), colors, sizes, and rotation.
+*   **Signatures**: Draw and place signatures directly onto pages using the built-in signature pad.
+*   **Stamps & Images**: Insert standard stamps (Confidential, Draft, Approved) or upload custom images/logos.
+*   **Image Filters**: Adjust brightness and contrast for scanned documents or images.
+*   **Non-Destructive Crop**: Visually crop pages or images to focus on specific content.
+
+### 🗂️ Visual Organization & Workflow
+*   **View Modes**: Toggle between **Grid View** (for sorting) and **List View** (for details). Use the **Zoom Slider** to adjust thumbnail sizes.
+*   **Smart Selection**:
+    *   **Marquee Select**: Click and drag to select multiple pages at once.
+    *   **Range Input**: Type "1-3, 5" to instantly select specific page ranges.
+    *   **Context Menu**: Right-click any page for quick actions (Rotate, Duplicate, Split, Delete).
+*   **Session Restore**: Accidentally closed the tab? The app saves your state locally, allowing you to restore your previous session exactly where you left off.
+*   **Undo/Redo**: Full history support (Ctrl+Z / Ctrl+Y) for peace of mind while editing.
+
+### 📄 Document Manipulation
+*   **Merge & Combine**: specific Drag and drop multiple PDFs and images (JPG/PNG) to combine them.
+*   **Split Pages**: unique "Split Half" feature to divide a single page into two (Left/Right)—perfect for scanned book spreads.
+*   **Insert Blank**: Add empty pages for notes or separators.
+*   **Metadata Editor**: View and edit the PDF Title, Author, and Subject properties.
+*   **Sorting**: Auto-sort pages **A-Z** by filename or **1-9** by custom page numbers.
+
+### 📤 Export Options
+*   **Flexible Saving**: Save **All Pages** or only **Selected Pages**.
+*   **Page Numbering**: Optional checkbox to automatically add page numbers to the footer of the exported file.
+*   **Print**: Print the composed document directly from the browser.
+*   **Preview**: Open the generated PDF in a new tab for final verification.
+
+## UI/UX Features
+*   **Dark Mode**: Fully supported dark theme that respects system preferences or can be toggled manually.
+*   **Floating Action Bar**: A contextual footer appears when pages are selected for quick access to bulk actions.
+*   **Keyboard Shortcuts**: Support for Delete key, Arrow navigation, and Ctrl/Shift selection.
 
 ## How to Use
 
-1.  **Add Files**: Drag and drop your PDF and image files into the workspace, or use the "Add Files" button.
-2.  **Manipulate Pages**:
-    -   **Reorder**: Drag any page thumbnail to a new position.
-    -   **Select**: Click a page to select it. Use `Shift+Click` for range selection or `Ctrl/Cmd+Click` to select multiple individual pages. You can also use the checkbox on each page.
-    -   **Delete**: Click the 'X' icon on a page thumbnail or select multiple pages and use the "Delete Selected" button.
-    -   **Sort**: Enter numbers into the input field on each page and click "Sort by Number" for precise ordering.
-3.  **Export Your Document**:
-    -   Once you are happy with the arrangement, click the "Export" button to save your new PDF.
-    -   Use the dropdown next to the "Export" button to access the "Preview" and "Print" options.
+1.  **Start**: Drag and drop files onto the start screen or click "Browse Files".
+2.  **Organize**: 
+    *   Drag pages to reorder.
+    *   Right-click a page for options like **Rotate** or **Split**.
+    *   Use the sidebar to add blank pages or select ranges.
+3.  **Edit**: 
+    *   Double-click a page (or click "Edit Page" in the context menu) to open the **Editor Modal**.
+    *   Add text, signatures, or adjust image settings, then click "Save & Close".
+4.  **Export**: 
+    *   Click the "Export PDF" button in the footer.
+    *   Use the dropdown arrow to access Print, Save Selected, or Preview options.
 
 ## Technology Stack
 
-This application is built with modern, client-side web technologies and requires no backend.
+This application is built with modern web technologies and requires no backend:
 
--   **PDF Generation**: [**pdf-lib**](https://pdf-lib.js.org/) is used for creating, modifying, and saving the final PDF document.
--   **PDF Rendering**: [**PDF.js**](https://mozilla.github.io/pdf.js/) by Mozilla is used to render the beautiful and accurate page thumbnails in the workspace.
--   **Drag & Drop**: [**SortableJS**](https://sortablejs.github.io/Sortable/) provides the powerful and smooth drag-and-drop functionality for reordering pages.
--   **Core**: Vanilla JavaScript (ES6+), HTML5, and modern CSS3.
+*   **PDF Manipulation**: [**pdf-lib**](https://pdf-lib.js.org/) (Creation, modification, and export).
+*   **Rendering**: [**PDF.js**](https://mozilla.github.io/pdf.js/) (High-fidelity thumbnail generation).
+*   **UI Styling**: [**Tailwind CSS**](https://tailwindcss.com/) (Responsive design and Dark Mode).
+*   **Drag & Drop**: [**SortableJS**](https://sortablejs.github.io/Sortable/) (Smooth grid interactions).
+*   **State Management**: **IndexedDB** (Local storage for session restoration).
 
 ## Browser Compatibility
 
-This tool works in all modern desktop browsers that support the necessary File APIs and JavaScript features, including:
+Works in all modern desktop browsers including Chrome, Firefox, Edge, and Safari. 
 
--   Google Chrome
--   Mozilla Firefox
--   Microsoft Edge
--   Safari
+---
+*Note: Since this tool runs entirely in the browser, performance depends on your device's RAM and CPU, especially when handling very large or high-resolution PDF files.*
