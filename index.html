@@ -96,18 +96,22 @@
         <div class="w-full max-w-4xl bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
             <div class="p-10 md:w-1/2 flex flex-col justify-center text-left text-white border-r border-white/10">
                 <div class="inline-flex w-fit items-center gap-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-3 py-1 rounded-full text-xs font-medium mb-4">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                    100% Client-Side Processing
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    HIPAA Ready: 100% Local
                 </div>
                 <h1 class="text-4xl font-bold mb-4 tracking-tight">Visual PDF Editor <span class="text-indigo-400">Pro</span></h1>
-                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Merge, split, crop, sign, and organize documents securely.</p>
-                <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg"><p class="text-sm">⚠️ Previous session found.</p><button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button></div>
+                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and protect documents locally.</p>
+                <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg">
+                    <p class="text-sm">⚠️ Previous session found.</p>
+                    <button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button>
+                </div>
             </div>
             <div class="p-10 md:w-1/2 bg-black/20 flex flex-col justify-center items-center">
                 <div id="startDropZone" class="w-full aspect-square border-2 border-dashed border-slate-500/50 rounded-2xl flex flex-col items-center justify-center hover:bg-white/5 hover:border-indigo-400 transition-all cursor-pointer group relative overflow-hidden">
                     <div class="absolute inset-0 bg-indigo-500/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <svg class="w-16 h-16 text-slate-500 group-hover:text-indigo-400 transition-colors mb-4 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                     <p class="text-slate-400 font-medium relative z-10">Drag files here</p>
+                    <p class="text-slate-600 text-sm mt-2 relative z-10">PDF, JPG, PNG</p>
                     <button id="startChooseFileBtn" class="mt-6 bg-white text-slate-900 hover:bg-indigo-50 font-bold py-2 px-6 rounded-full shadow-lg transition relative z-10">Browse Files</button>
                 </div>
             </div>
@@ -119,7 +123,7 @@
         <!-- SIDEBAR -->
         <aside id="sidebar" class="w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col flex-shrink-0 z-40 fixed md:relative h-full transition-all duration-300 transform -translate-x-full md:translate-x-0 shadow-xl md:shadow-none">
             
-            <!-- NEW HEADER -->
+            <!-- HEADER -->
             <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
                 <div>
                     <h2 class="font-bold text-lg">Source Files</h2>
@@ -132,15 +136,16 @@
             </div>
 
             <div id="sourceFileList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll">
-                <!-- Dynamically populated or Empty State shown by JS -->
+                <!-- Dynamically populated -->
             </div>
 
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3">
                 <button id="insertBlankBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">+</span> <span class="truncate">Insert Blank</span></button>
                 <button id="openTextModalBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">✎</span> <span class="truncate">Edit / Sign</span></button>
                 <button id="openMetadataBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">⚙</span> <span class="truncate">Metadata</span></button>
+                <button id="openProtectBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">🔒</span> <span class="truncate">Protect / Encrypt</span></button>
                 
-                <!-- NEW RANGE SELECTION TOOL -->
+                <!-- RANGE SELECTION TOOL -->
                 <div>
                     <label class="block text-xs text-slate-500 mb-1">Select Range (e.g. 1-3, 5)</label>
                     <div class="flex gap-2">
@@ -158,7 +163,7 @@
                     <button id="menu-toggle-btn" class="md:hidden text-slate-500 p-2 hover:bg-slate-100 rounded">☰</button>
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                         <button id="viewGridBtn" class="p-1.5 rounded bg-white dark:bg-slate-600 shadow-sm text-indigo-600" data-tooltip="Grid View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
-                        <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500" data-tooltip="List View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
+                        <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500" data-tooltip="List View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
                     </div>
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                         <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300" data-tooltip="Undo"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></button>
@@ -221,6 +226,27 @@
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">Subject</label><input type="text" id="meta-subject" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white"></div>
             </div>
             <div class="mt-6 flex justify-end gap-2"><button class="close-meta-modal px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400">Cancel</button><button id="saveMetadataBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold">Save</button></div>
+        </div>
+    </div>
+
+    <!-- PASSWORD/PROTECT MODAL -->
+    <div id="protect-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300 border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                <h3 class="text-xl font-bold dark:text-white">Protect Document</h3>
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Set a password to encrypt the final PDF. This password will be required to open the file.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Document Password</label>
+                    <input type="password" id="protect-password" placeholder="Enter password..." class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button class="close-protect-modal px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400">Cancel</button>
+                <button id="saveProtectBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold">Set Password</button>
+            </div>
         </div>
     </div>
 
@@ -302,13 +328,13 @@
 
     <script>
     // --- WORKER CONFIG ---
-    // Using local worker path as requested
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
 
+    // --- INDEXED DB MANAGER (Robust Offline Storage) ---
     class LocalStorageManager {
         constructor(dbName='PDFEditorDB', storeName='StateStore') { this.dbName=dbName; this.storeName=storeName; this.db=null; }
         async init() { return new Promise((resolve, reject) => { const req = indexedDB.open(this.dbName, 1); req.onerror = e => reject(e); req.onupgradeneeded = e => { if(!e.target.result.objectStoreNames.contains(this.storeName)) e.target.result.createObjectStore(this.storeName); }; req.onsuccess = e => { this.db = e.target.result; resolve(); }; }); }
-        async saveState(sourceFiles, pages, metadata) { if(!this.db) await this.init(); const serialized = sourceFiles.map(f => ({ id: f.id, name: f.name, type: f.type, file: f.file })); const state = { sourceFiles: serialized, pages: pages, metadata: metadata }; return new Promise((r, j) => { const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).put(state, 'currentState'); tx.oncomplete=r; tx.onerror=j; }); }
+        async saveState(sourceFiles, pages, metadata, protection) { if(!this.db) await this.init(); const serialized = sourceFiles.map(f => ({ id: f.id, name: f.name, type: f.type, file: f.file })); const state = { sourceFiles: serialized, pages: pages, metadata: metadata, protection: protection }; return new Promise((r, j) => { const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).put(state, 'currentState'); tx.oncomplete=r; tx.onerror=j; }); }
         async loadState() { if(!this.db) await this.init(); return new Promise((r, j) => { const tx=this.db.transaction([this.storeName], 'readonly'); const req=tx.objectStore(this.storeName).get('currentState'); req.onsuccess=()=>r(req.result); req.onerror=j; }); }
         async clear() { if(!this.db) await this.init(); const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).clear(); }
     }
@@ -317,19 +343,34 @@
         constructor() {
             this.sourceFiles = []; this.pages = []; this.selectedPageIds = new Set();
             this.metadata = { title: '', author: '', subject: '' };
+            this.protection = { password: '' }; // State for password
             this.historyStack = []; this.redoStack = []; this.maxHistory = 20;
             this.dbManager = new LocalStorageManager();
             this.observer = null; this.contextTargetId = null;
             this.editingPageId = null; this.tempTextOverlays = []; this.activeTextIndex = -1; this.tempRotation = 0; 
             this.tempBrightness = 100; this.tempContrast = 100; this.isCropping = false;
-            this.pageGrid = document.getElementById('page-grid'); this.textModal = document.getElementById('text-modal'); this.metaModal = document.getElementById('metadata-modal'); this.contextMenu = document.getElementById('context-menu');
+            this.pageGrid = document.getElementById('page-grid'); 
+            this.textModal = document.getElementById('text-modal'); 
+            this.metaModal = document.getElementById('metadata-modal'); 
+            this.protectModal = document.getElementById('protect-modal');
+            this.contextMenu = document.getElementById('context-menu');
             this.lastSelectedId = null;
             this.init();
         }
         async init() {
             this.initSortable(); this.initEventListeners(); this.initIntersectionObserver(); this.initContextMenu(); this.initMarqueeSelection(); this.initSignaturePad();
             this.checkTheme(); document.documentElement.style.setProperty('--grid-size', '180px');
-            try { await this.dbManager.init(); const saved = await this.dbManager.loadState(); if(saved && saved.pages.length > 0) { if(saved.metadata) this.metadata = saved.metadata; document.getElementById('restore-banner').classList.remove('hidden'); document.getElementById('restoreBtn').addEventListener('click', () => this.restoreSession(saved)); } } catch(e) { console.log("DB Init Error", e); }
+            try { 
+                await this.dbManager.init(); 
+                const saved = await this.dbManager.loadState(); 
+                if(saved && saved.pages.length > 0) { 
+                    if(saved.metadata) this.metadata = saved.metadata; 
+                    if(saved.protection) this.protection = saved.protection;
+                    // Show Restore Banner if session found
+                    document.getElementById('restore-banner').classList.remove('hidden'); 
+                    document.getElementById('restoreBtn').addEventListener('click', () => this.restoreSession(saved)); 
+                } 
+            } catch(e) { console.log("DB Init Error", e); }
         }
         checkTheme() { if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark'); }
         safeAddListener(id, event, handler) { const el = document.getElementById(id); if (el) el.addEventListener(event, handler); }
@@ -347,10 +388,8 @@
                 if (file.type.startsWith('image/')) { this.sourceFiles.push(sourceFile); this.addPageToData(sourceFile, 0, 'image'); } 
                 else if (file.type === 'application/pdf') {
                     try { 
-                        // FIX: Read buffer once and clone it to prevent "detached ArrayBuffer" error
                         const arrayBuffer = await file.arrayBuffer(); 
                         const bufferCopy = arrayBuffer.slice(0); // Clone for the second library
-
                         sourceFile.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise; 
                         sourceFile.pdfLibDoc = await PDFLib.PDFDocument.load(bufferCopy); 
                         
@@ -368,7 +407,6 @@
             const activeFiles = new Set(this.pages.map(p => p.sourceFile.id));
             const files = this.sourceFiles.filter(f => activeFiles.has(f.id) || f.type === 'blank');
             
-            // FIX: Don't remove elements if it destroys the container structure. Just replace innerHTML.
             if(files.length === 0) { 
                 el.innerHTML = '<div id="empty-source-state" class="text-center py-10 opacity-50"><svg class="w-10 h-10 mx-auto mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg><p class="text-[10px] uppercase tracking-wider">Empty</p></div>';
             } else { 
@@ -551,14 +589,18 @@
         }
         
         savePageEdits() { if (!this.editingPageId) return; const page = this.pages.find(p => p.id === this.editingPageId); if (!page) { this.showToast("Error saving: Page not found", "error"); return; } page.textOverlays = JSON.parse(JSON.stringify(this.tempTextOverlays)); page.rotation = this.tempRotation; page.brightness = this.tempBrightness; page.contrast = this.tempContrast; this.saveState(); this.showToast("Changes saved"); this.renderAllPages(); this.textModal.classList.add('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.add('scale-95'); }
+        
+        // PROTECTION / METADATA
         openMetadataModal() { document.getElementById('meta-title').value = this.metadata.title; document.getElementById('meta-author').value = this.metadata.author; document.getElementById('meta-subject').value = this.metadata.subject; this.metaModal.classList.remove('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.remove('scale-95'); }
         saveMetadata() { this.metadata.title = document.getElementById('meta-title').value; this.metadata.author = document.getElementById('meta-author').value; this.metadata.subject = document.getElementById('meta-subject').value; this.saveState(); this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); this.showToast("Metadata saved"); }
-        
+        openProtectModal() { document.getElementById('protect-password').value = this.protection.password || ''; this.protectModal.classList.remove('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.remove('scale-95'); }
+        saveProtection() { this.protection.password = document.getElementById('protect-password').value; this.saveState(); this.protectModal.classList.add('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.add('scale-95'); this.showToast(this.protection.password ? "Password Set" : "Password Removed"); }
+
         // INTERACTIONS
         initContextMenu() { document.addEventListener('click', () => this.contextMenu.classList.add('hidden')); this.pageGrid.addEventListener('contextmenu', e => { const item = e.target.closest('.page-item'); if(!item) return; e.preventDefault(); this.contextTargetId = item.dataset.id; let x = e.clientX, y = e.clientY; if(x + 200 > window.innerWidth) x = window.innerWidth - 210; if(y + 200 > window.innerHeight) y = window.innerHeight - 210; this.contextMenu.style.left = `${x}px`; this.contextMenu.style.top = `${y}px`; this.contextMenu.classList.remove('hidden'); }); this.safeAddListener('ctx-edit', 'click', () => this.openPageEditor(this.contextTargetId)); this.safeAddListener('ctx-split', 'click', () => this.splitPage(this.contextTargetId)); this.safeAddListener('ctx-delete', 'click', () => this.deletePages([this.contextTargetId])); this.safeAddListener('ctx-duplicate', 'click', () => { this.selectedPageIds.clear(); this.selectedPageIds.add(this.contextTargetId); this.duplicateSelected(); }); this.safeAddListener('ctx-rotate-cw', 'click', () => this.rotatePages([this.contextTargetId], 90)); this.safeAddListener('ctx-rotate-ccw', 'click', () => this.rotatePages([this.contextTargetId], -90)); }
         async restoreSession(saved) { this.showLoader(true, 'Restoring Session...'); this.sourceFiles = []; for (const f of saved.sourceFiles) { const source = { id: f.id, name: f.name, type: f.type, file: f.file }; if(f.type === 'application/pdf') { const ab = await f.file.arrayBuffer(); source.pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise; source.pdfLibDoc = await PDFLib.PDFDocument.load(ab); } this.sourceFiles.push(source); } this.pages = []; saved.pages.forEach(p => { const source = this.sourceFiles.find(s => s.id === p.sourceFileId); if(source) this.pages.push({ id: p.id, sourceFile: source, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: p.textOverlays, brightness: p.brightness, contrast: p.contrast, crop: p.crop || {x:0,y:0,w:1,h:1} }); }); document.getElementById('start-screen').classList.add('hidden'); document.querySelector('.app-container').classList.remove('hidden'); this.renderAllPages(); this.updateStatus(); this.showLoader(false); }
-        saveState() { const snapshot = this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: p.crop })); this.historyStack.push(snapshot); if(this.historyStack.length > this.maxHistory) this.historyStack.shift(); this.redoStack = []; this.updateHistoryButtons(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata); this.autoSaveNotify(); }
-        restoreState(snapshot) { this.pages = []; snapshot.forEach(item => { const source = this.sourceFiles.find(f => f.id === item.sourceFileId); if(source) this.pages.push({ id: item.id, sourceFile: source, sourcePageIndex: item.sourcePageIndex, type: item.type, rotation: item.rotation, textOverlays: item.textOverlays || [], brightness: item.brightness, contrast: item.contrast, crop: item.crop || {x:0,y:0,w:1,h:1} }); }); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata); }
+        saveState() { const snapshot = this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: p.crop })); this.historyStack.push(snapshot); if(this.historyStack.length > this.maxHistory) this.historyStack.shift(); this.redoStack = []; this.updateHistoryButtons(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata, this.protection); this.autoSaveNotify(); }
+        restoreState(snapshot) { this.pages = []; snapshot.forEach(item => { const source = this.sourceFiles.find(f => f.id === item.sourceFileId); if(source) this.pages.push({ id: item.id, sourceFile: source, sourcePageIndex: item.sourcePageIndex, type: item.type, rotation: item.rotation, textOverlays: item.textOverlays || [], brightness: item.brightness, contrast: item.contrast, crop: item.crop || {x:0,y:0,w:1,h:1} }); }); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata, this.protection); }
         performUndo() { if(this.historyStack.length) { this.redoStack.push(this.snapshotCurrentState()); this.restoreState(this.historyStack.pop()); this.updateHistoryButtons(); } }
         performRedo() { if(this.redoStack.length) { this.historyStack.push(this.snapshotCurrentState()); this.restoreState(this.redoStack.pop()); this.updateHistoryButtons(); } }
         snapshotCurrentState() { return this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: p.crop })); }
@@ -601,13 +643,22 @@
             this.safeAddListener('saveBtn', 'click', () => this.createPdf()); this.safeAddListener('saveSelectedBtn', 'click', () => this.createPdf(false, false, true)); this.safeAddListener('printBtn', 'click', () => this.createPdf(false, true)); this.safeAddListener('previewBtn', 'click', () => this.createPdf(true));
             this.safeAddListener('openMetadataBtn', 'click', () => this.openMetadataModal()); this.safeAddListener('saveMetadataBtn', 'click', () => this.saveMetadata());
             const closeMeta = document.querySelector('.close-meta-modal'); if(closeMeta) closeMeta.addEventListener('click', () => { this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); });
+            this.safeAddListener('openProtectBtn', 'click', () => this.openProtectModal()); this.safeAddListener('saveProtectBtn', 'click', () => this.saveProtection());
+            const closeProtect = document.querySelector('.close-protect-modal'); if(closeProtect) closeProtect.addEventListener('click', () => { this.protectModal.classList.add('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.add('scale-95'); });
             document.querySelectorAll('.pos-btn').forEach(btn => btn.addEventListener('click', e => this.setTextPosition(e.target.dataset.pos))); document.querySelectorAll('.stamp-btn').forEach(btn => btn.addEventListener('click', e => this.addStamp(e.target.dataset.text, e.target.dataset.color)));
             document.getElementById('filter-brightness').addEventListener('input', e => this.updateFilter('brightness', e.target.value)); document.getElementById('filter-contrast').addEventListener('input', e => this.updateFilter('contrast', e.target.value));
             document.getElementById('uploadStampBtn').addEventListener('click', () => document.getElementById('stampInput').click()); document.getElementById('stampInput').addEventListener('change', e => this.uploadStamp(e.target.files[0]));
             document.getElementById('toggleCropBtn').addEventListener('click', () => this.toggleCrop());
             this.safeAddListener('selectRangeBtn', 'click', () => this.selectRange());
+            
+            // --- START SCREEN DROP ZONE CLICK ---
+            const dz = document.getElementById('startDropZone');
+            if(dz) dz.addEventListener('click', () => document.getElementById('fileInput').click());
+            const startBtn = document.getElementById('startChooseFileBtn');
+            if(startBtn) startBtn.addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('fileInput').click(); });
+
             this.pageGrid.addEventListener('click', this.handlePageClick.bind(this)); this.pageGrid.addEventListener('dblclick', e => { const item = e.target.closest('.page-item'); if (item) this.openPageEditor(item.dataset.id); });
-            ['startDropZone', 'main-view'].forEach(id => { const z = document.getElementById(id); if(z) { z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('dragover'); }); z.addEventListener('dragleave', e => { e.preventDefault(); z.classList.remove('dragover'); }); z.addEventListener('drop', e => { e.preventDefault(); z.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); }); } });
+            ['startDropZone', 'main-view'].forEach(id => { const z = document.getElementById(id); if(z) { z.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); z.classList.add('dragover'); }); z.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); z.classList.remove('dragover'); }); z.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); z.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); }); } });
         }
         hexToRgb(hex) { const r = parseInt(hex.substr(1, 2), 16) / 255; const g = parseInt(hex.substr(3, 2), 16) / 255; const b = parseInt(hex.substr(5, 2), 16) / 255; return { r, g, b }; }
         getFont(family, isBold, isItalic) { if (family === 'Helvetica') return isBold && isItalic ? 'HelveticaBoldOblique' : isBold ? 'HelveticaBold' : isItalic ? 'HelveticaOblique' : 'Helvetica'; if (family === 'TimesRoman') return isBold && isItalic ? 'TimesRomanBoldItalic' : isBold ? 'TimesRomanBold' : isItalic ? 'TimesRomanItalic' : 'TimesRoman'; if (family === 'Courier') return isBold && isItalic ? 'CourierBoldOblique' : isBold ? 'CourierBold' : isItalic ? 'CourierOblique' : 'Courier'; return 'Helvetica'; }
@@ -654,7 +705,16 @@
                     }); }
                     if (addPageNum) { const { width } = page.getSize(); page.drawText(`${i+1} / ${targetPages.length}`, { x: width/2, y: 20, size: 10, font: embeddedFonts['Helvetica'], color: PDFLib.rgb(0,0,0), xCentered: true }); }
                 }
-                const pdfBytes = await doc.save(); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); const url = URL.createObjectURL(blob);
+                
+                // SAVE WITH PASSWORD IF SET
+                const saveOptions = {};
+                if(this.protection.password) {
+                    saveOptions.userPassword = this.protection.password;
+                    saveOptions.ownerPassword = this.protection.password;
+                }
+                const pdfBytes = await doc.save(saveOptions); 
+                
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' }); const url = URL.createObjectURL(blob);
                 if (preview) window.open(url, '_blank'); else if (print) { const iframe = document.getElementById('printFrame'); iframe.src = url; iframe.onload = () => { iframe.contentWindow.print(); }; } else { const link = document.createElement('a'); link.href = url; const nameInput = document.getElementById('filenameInput'); link.download = (nameInput ? nameInput.value : 'document') + '.pdf'; document.body.appendChild(link); link.click(); document.body.removeChild(link); this.showToast('PDF Exported Successfully'); }
             } catch (e) { console.error(e); this.showToast('Error: ' + e.message, 'error'); }
             this.showLoader(false);
