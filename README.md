@@ -1,8 +1,11 @@
-# Visual PDF Editor Pro
+# Visual PDF Editor (Pro Local)
+
 
 A professional-grade, browser-based toolkit for visually merging, splitting, editing, signing, and organizing PDF documents. 
 
 **100% Client-Side Processing:** All file manipulations happen directly in your browser. Your documents are never uploaded to a server, ensuring absolute privacy and security.
+
+**HIPAA Ready:** All file manipulations happen directly in your browser. Your documents are never uploaded to a server, making this tool safe for sensitive, medical, or legal documents.
 
 ## Live Demo
 
