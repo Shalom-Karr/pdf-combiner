@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual PDF Editor (Pro Local)</title>
+    <title>Visual PDF Editor (Secure & Protected)</title>
 
-    <!-- LIBRARIES (Use local files for true offline/HIPAA compliance) -->
+    <!-- LOCAL LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -91,7 +91,7 @@
         <button id="ctx-delete" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3"><span>🗑</span> Delete</button>
     </div>
 
-    <!-- START SCREEN (Updated) -->
+    <!-- START SCREEN -->
     <div id="start-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black p-4">
         <div class="w-full max-w-4xl bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
             <div class="p-10 md:w-1/2 flex flex-col justify-center text-left text-white border-r border-white/10">
@@ -100,7 +100,7 @@
                     HIPAA Ready: 100% Local
                 </div>
                 <h1 class="text-4xl font-bold mb-4 tracking-tight">Visual PDF Editor <span class="text-indigo-400">Pro</span></h1>
-                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and edit documents without them ever leaving your device.</p>
+                <p class="opacity-80 mb-6 text-lg font-light leading-relaxed">Securely merge, organize, and protect documents locally.</p>
                 <div id="restore-banner" class="hidden bg-indigo-600/30 border border-indigo-500/50 p-4 rounded-lg">
                     <p class="text-sm">⚠️ Previous session found.</p>
                     <button id="restoreBtn" class="mt-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded transition">Restore Session</button>
@@ -136,13 +136,14 @@
             </div>
 
             <div id="sourceFileList" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll">
-                <!-- Dynamically populated or Empty State shown by JS -->
+                <!-- Dynamically populated -->
             </div>
 
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3">
                 <button id="insertBlankBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">+</span> <span class="truncate">Insert Blank</span></button>
                 <button id="openTextModalBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">✎</span> <span class="truncate">Edit / Sign</span></button>
                 <button id="openMetadataBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">⚙</span> <span class="truncate">Metadata</span></button>
+                <button id="openProtectBtn" class="w-full py-2.5 px-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium text-left flex items-center gap-3 transition shadow-sm group"><span class="text-indigo-500 font-bold group-hover:scale-110 transition">🔒</span> <span class="truncate">Protect / Encrypt</span></button>
                 
                 <!-- RANGE SELECTION TOOL -->
                 <div>
@@ -162,7 +163,7 @@
                     <button id="menu-toggle-btn" class="md:hidden text-slate-500 p-2 hover:bg-slate-100 rounded">☰</button>
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                         <button id="viewGridBtn" class="p-1.5 rounded bg-white dark:bg-slate-600 shadow-sm text-indigo-600" data-tooltip="Grid View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
-                        <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500" data-tooltip="List View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
+                        <button id="viewListBtn" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-500 text-slate-500" data-tooltip="List View"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
                     </div>
                     <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                         <button id="undoBtn" disabled class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-600 disabled:opacity-30 transition text-slate-600 dark:text-slate-300" data-tooltip="Undo"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></button>
@@ -228,6 +229,27 @@
         </div>
     </div>
 
+    <!-- PASSWORD/PROTECT MODAL -->
+    <div id="protect-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300 border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                <h3 class="text-xl font-bold dark:text-white">Protect Document</h3>
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Set a password to encrypt the final PDF. This password will be required to open the file.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Document Password</label>
+                    <input type="password" id="protect-password" placeholder="Enter password..." class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button class="close-protect-modal px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400">Cancel</button>
+                <button id="saveProtectBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold">Set Password</button>
+            </div>
+        </div>
+    </div>
+
     <!-- TEXT/EDITOR MODAL -->
     <div id="text-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
         <div class="bg-white dark:bg-slate-800 w-full max-w-7xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300">
@@ -270,7 +292,7 @@
                             <div class="flex gap-2 mb-2"><button id="txt-bold-btn" class="style-btn w-8 h-8 rounded border bg-white font-bold text-xs" title="Bold">B</button><button id="txt-italic-btn" class="style-btn w-8 h-8 rounded border bg-white italic font-serif text-xs" title="Italic">I</button></div>
                             <textarea id="txt-content" placeholder="Type text here..." class="w-full h-16 text-sm p-3 rounded-lg border-0 focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 mb-2 resize-none shadow-sm"></textarea>
                             
-                            <!-- QUICK POS GRID -->
+                            <!-- RESTORED: QUICK POS GRID -->
                             <div class="grid grid-cols-3 gap-1 mb-2">
                                 <button class="pos-btn p-1 bg-white dark:bg-slate-800 border rounded hover:bg-slate-50" data-pos="tl">↖</button>
                                 <button class="pos-btn p-1 bg-white dark:bg-slate-800 border rounded hover:bg-slate-50" data-pos="tc">↑</button>
@@ -313,7 +335,7 @@
     class LocalStorageManager {
         constructor(dbName='PDFEditorDB', storeName='StateStore') { this.dbName=dbName; this.storeName=storeName; this.db=null; }
         async init() { return new Promise((resolve, reject) => { const req = indexedDB.open(this.dbName, 1); req.onerror = e => reject(e); req.onupgradeneeded = e => { if(!e.target.result.objectStoreNames.contains(this.storeName)) e.target.result.createObjectStore(this.storeName); }; req.onsuccess = e => { this.db = e.target.result; resolve(); }; }); }
-        async saveState(sourceFiles, pages, metadata) { if(!this.db) await this.init(); const serialized = sourceFiles.map(f => ({ id: f.id, name: f.name, type: f.type, file: f.file })); const state = { sourceFiles: serialized, pages: pages, metadata: metadata }; return new Promise((r, j) => { const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).put(state, 'currentState'); tx.oncomplete=r; tx.onerror=j; }); }
+        async saveState(sourceFiles, pages, metadata, protection) { if(!this.db) await this.init(); const serialized = sourceFiles.map(f => ({ id: f.id, name: f.name, type: f.type, file: f.file })); const state = { sourceFiles: serialized, pages: pages, metadata: metadata, protection: protection }; return new Promise((r, j) => { const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).put(state, 'currentState'); tx.oncomplete=r; tx.onerror=j; }); }
         async loadState() { if(!this.db) await this.init(); return new Promise((r, j) => { const tx=this.db.transaction([this.storeName], 'readonly'); const req=tx.objectStore(this.storeName).get('currentState'); req.onsuccess=()=>r(req.result); req.onerror=j; }); }
         async clear() { if(!this.db) await this.init(); const tx=this.db.transaction([this.storeName], 'readwrite'); tx.objectStore(this.storeName).clear(); }
     }
@@ -322,12 +344,17 @@
         constructor() {
             this.sourceFiles = []; this.pages = []; this.selectedPageIds = new Set();
             this.metadata = { title: '', author: '', subject: '' };
+            this.protection = { password: '' }; // State for password
             this.historyStack = []; this.redoStack = []; this.maxHistory = 20;
             this.dbManager = new LocalStorageManager();
             this.observer = null; this.contextTargetId = null;
             this.editingPageId = null; this.tempTextOverlays = []; this.activeTextIndex = -1; this.tempRotation = 0; 
             this.tempBrightness = 100; this.tempContrast = 100; this.isCropping = false;
-            this.pageGrid = document.getElementById('page-grid'); this.textModal = document.getElementById('text-modal'); this.metaModal = document.getElementById('metadata-modal'); this.contextMenu = document.getElementById('context-menu');
+            this.pageGrid = document.getElementById('page-grid'); 
+            this.textModal = document.getElementById('text-modal'); 
+            this.metaModal = document.getElementById('metadata-modal'); 
+            this.protectModal = document.getElementById('protect-modal');
+            this.contextMenu = document.getElementById('context-menu');
             this.lastSelectedId = null;
             this.init();
         }
@@ -339,6 +366,7 @@
                 const saved = await this.dbManager.loadState(); 
                 if(saved && saved.pages.length > 0) { 
                     if(saved.metadata) this.metadata = saved.metadata; 
+                    if(saved.protection) this.protection = saved.protection;
                     // Show Restore Banner if session found
                     document.getElementById('restore-banner').classList.remove('hidden'); 
                     document.getElementById('restoreBtn').addEventListener('click', () => this.restoreSession(saved)); 
@@ -361,10 +389,8 @@
                 if (file.type.startsWith('image/')) { this.sourceFiles.push(sourceFile); this.addPageToData(sourceFile, 0, 'image'); } 
                 else if (file.type === 'application/pdf') {
                     try { 
-                        // FIX: Read buffer once and clone it to prevent "detached ArrayBuffer" error
                         const arrayBuffer = await file.arrayBuffer(); 
                         const bufferCopy = arrayBuffer.slice(0); // Clone for the second library
-
                         sourceFile.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise; 
                         sourceFile.pdfLibDoc = await PDFLib.PDFDocument.load(bufferCopy); 
                         
@@ -564,14 +590,18 @@
         }
         
         savePageEdits() { if (!this.editingPageId) return; const page = this.pages.find(p => p.id === this.editingPageId); if (!page) { this.showToast("Error saving: Page not found", "error"); return; } page.textOverlays = JSON.parse(JSON.stringify(this.tempTextOverlays)); page.rotation = this.tempRotation; page.brightness = this.tempBrightness; page.contrast = this.tempContrast; this.saveState(); this.showToast("Changes saved"); this.renderAllPages(); this.textModal.classList.add('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.add('scale-95'); }
+        
+        // PROTECTION / METADATA
         openMetadataModal() { document.getElementById('meta-title').value = this.metadata.title; document.getElementById('meta-author').value = this.metadata.author; document.getElementById('meta-subject').value = this.metadata.subject; this.metaModal.classList.remove('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.remove('scale-95'); }
         saveMetadata() { this.metadata.title = document.getElementById('meta-title').value; this.metadata.author = document.getElementById('meta-author').value; this.metadata.subject = document.getElementById('meta-subject').value; this.saveState(); this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); this.showToast("Metadata saved"); }
-        
+        openProtectModal() { document.getElementById('protect-password').value = this.protection.password || ''; this.protectModal.classList.remove('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.remove('scale-95'); }
+        saveProtection() { this.protection.password = document.getElementById('protect-password').value; this.saveState(); this.protectModal.classList.add('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.add('scale-95'); this.showToast(this.protection.password ? "Password Set" : "Password Removed"); }
+
         // INTERACTIONS
         initContextMenu() { document.addEventListener('click', () => this.contextMenu.classList.add('hidden')); this.pageGrid.addEventListener('contextmenu', e => { const item = e.target.closest('.page-item'); if(!item) return; e.preventDefault(); this.contextTargetId = item.dataset.id; let x = e.clientX, y = e.clientY; if(x + 200 > window.innerWidth) x = window.innerWidth - 210; if(y + 200 > window.innerHeight) y = window.innerHeight - 210; this.contextMenu.style.left = `${x}px`; this.contextMenu.style.top = `${y}px`; this.contextMenu.classList.remove('hidden'); }); this.safeAddListener('ctx-edit', 'click', () => this.openPageEditor(this.contextTargetId)); this.safeAddListener('ctx-split', 'click', () => this.splitPage(this.contextTargetId)); this.safeAddListener('ctx-delete', 'click', () => this.deletePages([this.contextTargetId])); this.safeAddListener('ctx-duplicate', 'click', () => { this.selectedPageIds.clear(); this.selectedPageIds.add(this.contextTargetId); this.duplicateSelected(); }); this.safeAddListener('ctx-rotate-cw', 'click', () => this.rotatePages([this.contextTargetId], 90)); this.safeAddListener('ctx-rotate-ccw', 'click', () => this.rotatePages([this.contextTargetId], -90)); }
         async restoreSession(saved) { this.showLoader(true, 'Restoring Session...'); this.sourceFiles = []; for (const f of saved.sourceFiles) { const source = { id: f.id, name: f.name, type: f.type, file: f.file }; if(f.type === 'application/pdf') { const ab = await f.file.arrayBuffer(); source.pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise; source.pdfLibDoc = await PDFLib.PDFDocument.load(ab); } this.sourceFiles.push(source); } this.pages = []; saved.pages.forEach(p => { const source = this.sourceFiles.find(s => s.id === p.sourceFileId); if(source) this.pages.push({ id: p.id, sourceFile: source, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: p.textOverlays, brightness: p.brightness, contrast: p.contrast, crop: p.crop || {x:0,y:0,w:1,h:1} }); }); document.getElementById('start-screen').classList.add('hidden'); document.querySelector('.app-container').classList.remove('hidden'); this.renderAllPages(); this.updateStatus(); this.showLoader(false); }
-        saveState() { const snapshot = this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: p.crop })); this.historyStack.push(snapshot); if(this.historyStack.length > this.maxHistory) this.historyStack.shift(); this.redoStack = []; this.updateHistoryButtons(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata); this.autoSaveNotify(); }
-        restoreState(snapshot) { this.pages = []; snapshot.forEach(item => { const source = this.sourceFiles.find(f => f.id === item.sourceFileId); if(source) this.pages.push({ id: item.id, sourceFile: source, sourcePageIndex: item.sourcePageIndex, type: item.type, rotation: item.rotation, textOverlays: item.textOverlays || [], brightness: item.brightness, contrast: item.contrast, crop: item.crop || {x:0,y:0,w:1,h:1} }); }); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata); }
+        saveState() { const snapshot = this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: p.crop })); this.historyStack.push(snapshot); if(this.historyStack.length > this.maxHistory) this.historyStack.shift(); this.redoStack = []; this.updateHistoryButtons(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata, this.protection); this.autoSaveNotify(); }
+        restoreState(snapshot) { this.pages = []; snapshot.forEach(item => { const source = this.sourceFiles.find(f => f.id === item.sourceFileId); if(source) this.pages.push({ id: item.id, sourceFile: source, sourcePageIndex: item.sourcePageIndex, type: item.type, rotation: item.rotation, textOverlays: item.textOverlays || [], brightness: item.brightness, contrast: item.contrast, crop: item.crop || {x:0,y:0,w:1,h:1} }); }); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata, this.protection); }
         performUndo() { if(this.historyStack.length) { this.redoStack.push(this.snapshotCurrentState()); this.restoreState(this.historyStack.pop()); this.updateHistoryButtons(); } }
         performRedo() { if(this.redoStack.length) { this.historyStack.push(this.snapshotCurrentState()); this.restoreState(this.redoStack.pop()); this.updateHistoryButtons(); } }
         snapshotCurrentState() { return this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: p.crop })); }
@@ -614,13 +644,15 @@
             this.safeAddListener('saveBtn', 'click', () => this.createPdf()); this.safeAddListener('saveSelectedBtn', 'click', () => this.createPdf(false, false, true)); this.safeAddListener('printBtn', 'click', () => this.createPdf(false, true)); this.safeAddListener('previewBtn', 'click', () => this.createPdf(true));
             this.safeAddListener('openMetadataBtn', 'click', () => this.openMetadataModal()); this.safeAddListener('saveMetadataBtn', 'click', () => this.saveMetadata());
             const closeMeta = document.querySelector('.close-meta-modal'); if(closeMeta) closeMeta.addEventListener('click', () => { this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); });
+            this.safeAddListener('openProtectBtn', 'click', () => this.openProtectModal()); this.safeAddListener('saveProtectBtn', 'click', () => this.saveProtection());
+            const closeProtect = document.querySelector('.close-protect-modal'); if(closeProtect) closeProtect.addEventListener('click', () => { this.protectModal.classList.add('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.add('scale-95'); });
             document.querySelectorAll('.pos-btn').forEach(btn => btn.addEventListener('click', e => this.setTextPosition(e.target.dataset.pos))); document.querySelectorAll('.stamp-btn').forEach(btn => btn.addEventListener('click', e => this.addStamp(e.target.dataset.text, e.target.dataset.color)));
             document.getElementById('filter-brightness').addEventListener('input', e => this.updateFilter('brightness', e.target.value)); document.getElementById('filter-contrast').addEventListener('input', e => this.updateFilter('contrast', e.target.value));
             document.getElementById('uploadStampBtn').addEventListener('click', () => document.getElementById('stampInput').click()); document.getElementById('stampInput').addEventListener('change', e => this.uploadStamp(e.target.files[0]));
             document.getElementById('toggleCropBtn').addEventListener('click', () => this.toggleCrop());
             this.safeAddListener('selectRangeBtn', 'click', () => this.selectRange());
             
-            // --- NEW: START SCREEN DROP ZONE CLICK ---
+            // --- START SCREEN DROP ZONE CLICK ---
             const dz = document.getElementById('startDropZone');
             if(dz) dz.addEventListener('click', () => document.getElementById('fileInput').click());
             const startBtn = document.getElementById('startChooseFileBtn');
@@ -674,7 +706,16 @@
                     }); }
                     if (addPageNum) { const { width } = page.getSize(); page.drawText(`${i+1} / ${targetPages.length}`, { x: width/2, y: 20, size: 10, font: embeddedFonts['Helvetica'], color: PDFLib.rgb(0,0,0), xCentered: true }); }
                 }
-                const pdfBytes = await doc.save(); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); const url = URL.createObjectURL(blob);
+                
+                // SAVE WITH PASSWORD IF SET
+                const saveOptions = {};
+                if(this.protection.password) {
+                    saveOptions.userPassword = this.protection.password;
+                    saveOptions.ownerPassword = this.protection.password;
+                }
+                const pdfBytes = await doc.save(saveOptions); 
+                
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' }); const url = URL.createObjectURL(blob);
                 if (preview) window.open(url, '_blank'); else if (print) { const iframe = document.getElementById('printFrame'); iframe.src = url; iframe.onload = () => { iframe.contentWindow.print(); }; } else { const link = document.createElement('a'); link.href = url; const nameInput = document.getElementById('filenameInput'); link.download = (nameInput ? nameInput.value : 'document') + '.pdf'; document.body.appendChild(link); link.click(); document.body.removeChild(link); this.showToast('PDF Exported Successfully'); }
             } catch (e) { console.error(e); this.showToast('Error: ' + e.message, 'error'); }
             this.showLoader(false);
