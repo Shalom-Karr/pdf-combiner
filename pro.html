@@ -247,7 +247,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 <h3 class="text-xl font-bold dark:text-white">Protect Document</h3>
             </div>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Set a password to encrypt the final PDF. This password will be required to open the file.</p>
+            <p class="text-sm text-red-600 dark:text-red-400 mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">⚠️ PDF encryption is <strong>not supported</strong> by the bundled pdf-lib build. Leave this blank. If a password is set, export is blocked rather than producing a file that looks protected but is not.</p>
             <div class="space-y-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">Document Password</label>
@@ -377,9 +377,7 @@
             try { 
                 await this.dbManager.init(); 
                 const saved = await this.dbManager.loadState(); 
-                if(saved && saved.pages.length > 0) { 
-                    if(saved.metadata) this.metadata = saved.metadata; 
-                    if(saved.protection) this.protection = saved.protection;
+                if(saved && saved.pages.length > 0) {
                     // Show Restore Banner if session found
                     document.getElementById('restore-banner').classList.remove('hidden'); 
                     document.getElementById('restoreBtn').addEventListener('click', () => this.restoreSession(saved)); 
@@ -437,7 +435,7 @@
             const badgeHtml = hasText ? '<div class="absolute top-2 right-2 bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow z-10">T</div>' : '';
             const isSplit = pageData.crop && pageData.crop.w < 1;
             const widthStyle = isSplit ? 'width:50%; margin:0 auto;' : 'width:100%';
-            item.innerHTML = `<div class="absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity page-checkbox-wrapper"><input type="checkbox" class="page-checkbox w-5 h-5 cursor-pointer accent-indigo-600 rounded"></div>${badgeHtml}<div class="canvas-wrapper flex-1 bg-slate-50 dark:bg-slate-900/50 relative overflow-hidden flex items-center justify-center p-2"><div class="skeleton-shimmer w-full h-full absolute inset-0 z-0"></div><div class="relative shadow-sm bg-white z-10 opacity-0 transition-opacity duration-300 w-full h-full flex items-center justify-center" id="cv-cont-${pageData.id}"><canvas class="page-canvas max-w-full max-h-full object-contain block" style="${widthStyle}"></canvas></div></div><div class="page-info px-3 py-2 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 text-xs flex justify-between items-center h-10"><div class="flex flex-col min-w-0"><span class="font-medium text-slate-700 dark:text-slate-200 truncate">${pageData.sourceFile.name}</span><span class="text-[10px] text-slate-400">Page ${pageData.sourcePageIndex + 1}</span></div><div class="page-actions flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button class="rotate-ccw-btn hover:text-indigo-600 text-slate-400 p-1" data-tooltip="Rotate Left">↶</button><input type="text" class="page-order-input w-6 text-center bg-transparent font-bold text-slate-500" value="${index + 1}" disabled><button class="rotate-cw-btn hover:text-indigo-600 text-slate-400 p-1" data-tooltip="Rotate Right">↷</button></div></div>`;
+            item.innerHTML = `<div class="absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity page-checkbox-wrapper"><input type="checkbox" class="page-checkbox w-5 h-5 cursor-pointer accent-indigo-600 rounded"></div>${badgeHtml}<div class="canvas-wrapper flex-1 bg-slate-50 dark:bg-slate-900/50 relative overflow-hidden flex items-center justify-center p-2"><div class="skeleton-shimmer w-full h-full absolute inset-0 z-0"></div><div class="relative shadow-sm bg-white z-10 opacity-0 transition-opacity duration-300 w-full h-full flex items-center justify-center" id="cv-cont-${pageData.id}"><canvas class="page-canvas max-w-full max-h-full object-contain block" style="${widthStyle}"></canvas></div></div><div class="page-info px-3 py-2 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 text-xs flex justify-between items-center h-10"><div class="flex flex-col min-w-0"><span class="font-medium text-slate-700 dark:text-slate-200 truncate">${pageData.sourceFile.name}</span><span class="text-[10px] text-slate-400">Page ${pageData.sourcePageIndex + 1}</span></div><div class="page-actions flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button class="rotate-ccw-btn hover:text-indigo-600 text-slate-400 p-1" data-tooltip="Rotate Left">↶</button><input type="text" class="page-order-input w-6 text-center bg-transparent font-bold text-slate-500" value="${index + 1}"><button class="rotate-cw-btn hover:text-indigo-600 text-slate-400 p-1" data-tooltip="Rotate Right">↷</button></div></div>`;
             item.querySelector('.page-checkbox').addEventListener('click', (e) => { e.stopPropagation(); this.toggleSelection(pageData.id); }); this.pageGrid.appendChild(item); this.observer.observe(item);
         }
         async actuallyDrawCanvas(item, pageData) {
@@ -446,16 +444,11 @@
             const crop = pageData.crop || {x:0, y:0, w:1, h:1};
             
             if (pageData.type === 'blank') { canvas.width = 150*dpr; canvas.height = 200*dpr; ctx.scale(dpr,dpr); ctx.fillStyle='white'; ctx.fillRect(0,0,150,200); ctx.strokeStyle='#e2e8f0'; ctx.strokeRect(0,0,150,200); } 
-            else if (pageData.type === 'image') { 
-                const img = new Image(); const url = URL.createObjectURL(pageData.sourceFile.file); img.src = url; 
-                img.onload = () => { 
-                    const visualW = img.width * crop.w; const visualH = img.height * crop.h; const ratio = visualH / visualW; 
-                    canvas.width = 200 * dpr; canvas.height = 200 * ratio * dpr; 
-                    ctx.scale(dpr, dpr); ctx.translate(100, 100 * ratio); ctx.rotate((pageData.rotation * Math.PI) / 180);
-                    const sx = img.width * crop.x; const sy = img.height * crop.y; const sW = img.width * crop.w; const sH = img.height * crop.h;
-                    if(pageData.rotation % 180 !== 0) ctx.drawImage(img, sx, sy, sW, sH, -100 * ratio, -100, 200 * ratio, 200); else ctx.drawImage(img, sx, sy, sW, sH, -100, -100 * ratio, 200, 200 * ratio); 
-                    URL.revokeObjectURL(url); 
-                }; 
+            else if (pageData.type === 'image') {
+                const img = new Image(); const url = URL.createObjectURL(pageData.sourceFile.file); img.src = url;
+                await new Promise(r => { img.onload = r; img.onerror = r; });
+                URL.revokeObjectURL(url);
+                if (img.naturalWidth) { const visualW = img.width * crop.w; const visualH = img.height * crop.h; const ratio = visualH / visualW; canvas.width = 200 * dpr; canvas.height = 200 * ratio * dpr; ctx.scale(dpr, dpr); ctx.translate(100, 100 * ratio); ctx.rotate((pageData.rotation * Math.PI) / 180); const sx = img.width * crop.x; const sy = img.height * crop.y; const sW = img.width * crop.w; const sH = img.height * crop.h; if(pageData.rotation % 180 !== 0) ctx.drawImage(img, sx, sy, sW, sH, -100 * ratio, -100, 200 * ratio, 200); else ctx.drawImage(img, sx, sy, sW, sH, -100, -100 * ratio, 200, 200 * ratio); }
             } 
             else { 
                 try { 
@@ -467,7 +460,7 @@
                     ctx.save(); ctx.translate(-croppedVp.width * crop.x, -croppedVp.height * crop.y);
                     await page.render({ canvasContext: ctx, viewport: croppedVp }).promise;
                     ctx.restore();
-                } catch(e) {} 
+                } catch(e) { console.error(e); }
             }
             if(skeleton) skeleton.remove(); container.classList.remove('opacity-0');
         }
@@ -476,8 +469,9 @@
             const index = this.pages.findIndex(p => p.id === pageId);
             if (index > -1) {
                 const p = this.pages[index];
-                const p1 = JSON.parse(JSON.stringify(p)); p1.id = `page_${Date.now()}_L`; p1.crop = { x: 0, y: 0, w: 0.5, h: 1 };
-                const p2 = JSON.parse(JSON.stringify(p)); p2.id = `page_${Date.now()}_R`; p2.crop = { x: 0.5, y: 0, w: 0.5, h: 1 };
+                const oldCrop = p.crop || {x:0, y:0, w:1, h:1};
+                const p1 = { id: `page_${Date.now()}_${Math.random().toString(36).substr(2,9)}_L`, sourceFile: p.sourceFile, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: { x: oldCrop.x, y: oldCrop.y, w: oldCrop.w * 0.5, h: oldCrop.h } };
+                const p2 = { id: `page_${Date.now()}_${Math.random().toString(36).substr(2,9)}_R`, sourceFile: p.sourceFile, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: { x: oldCrop.x + oldCrop.w * 0.5, y: oldCrop.y, w: oldCrop.w * 0.5, h: oldCrop.h } };
                 this.pages.splice(index, 1, p1, p2); this.saveState(); this.renderAllPages(); this.showToast("Page Split Successfully");
             }
         }
@@ -527,6 +521,7 @@
             document.getElementById('filter-brightness').value = this.tempBrightness;
             document.getElementById('filter-contrast').value = this.tempContrast;
             this.textModal.classList.remove('hidden', 'opacity-0'); this.textModal.querySelector('div').classList.remove('scale-95', 'md:scale-95');
+            if (this.sigResize) this.sigResize();
             await this.renderEditorCanvas(); this.renderOverlayLayers();
         }
         async renderEditorCanvas() {
@@ -636,13 +631,19 @@
             const canvas = document.getElementById('signature-pad'); 
             const ctx = canvas.getContext('2d'); 
             let painting = false;
-            const resize = () => { 
-                canvas.width = canvas.parentElement.offsetWidth; 
-                canvas.height = canvas.parentElement.offsetHeight; 
-                ctx.lineWidth = 3; 
-                ctx.lineCap = 'round'; 
-            }; 
+            // Reassigning width/height wipes the bitmap, so carry any in-progress signature across.
+            const resize = () => {
+                const w = canvas.parentElement.offsetWidth, h = canvas.parentElement.offsetHeight;
+                if (canvas.width === w && canvas.height === h) return;
+                const prev = canvas.width && canvas.height ? canvas.toDataURL() : null;
+                canvas.width = w;
+                canvas.height = h;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                if (prev) { const im = new Image(); im.onload = () => ctx.drawImage(im, 0, 0, w, h); im.src = prev; }
+            };
             resize();
+            this.sigResize = resize;
             // Debounced resize observer might be better but simple works
             window.addEventListener('resize', resize);
 
@@ -695,11 +696,11 @@
         openMetadataModal() { document.getElementById('meta-title').value = this.metadata.title; document.getElementById('meta-author').value = this.metadata.author; document.getElementById('meta-subject').value = this.metadata.subject; this.metaModal.classList.remove('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.remove('scale-95'); }
         saveMetadata() { this.metadata.title = document.getElementById('meta-title').value; this.metadata.author = document.getElementById('meta-author').value; this.metadata.subject = document.getElementById('meta-subject').value; this.saveState(); this.metaModal.classList.add('hidden', 'opacity-0'); this.metaModal.querySelector('div').classList.add('scale-95'); this.showToast("Metadata saved"); }
         openProtectModal() { document.getElementById('protect-password').value = this.protection.password || ''; this.protectModal.classList.remove('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.remove('scale-95'); }
-        saveProtection() { this.protection.password = document.getElementById('protect-password').value; this.saveState(); this.protectModal.classList.add('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.add('scale-95'); this.showToast(this.protection.password ? "Password Set" : "Password Removed"); }
+        saveProtection() { this.protection.password = document.getElementById('protect-password').value; this.saveState(); this.protectModal.classList.add('hidden', 'opacity-0'); this.protectModal.querySelector('div').classList.add('scale-95'); if(this.protection.password) { this.showToast("Encryption not supported — export will be blocked while a password is set", 'error'); } else { this.showToast("Password Removed"); } }
 
         // INTERACTIONS
         initContextMenu() { document.addEventListener('click', () => this.contextMenu.classList.add('hidden')); this.pageGrid.addEventListener('contextmenu', e => { const item = e.target.closest('.page-item'); if(!item) return; e.preventDefault(); this.contextTargetId = item.dataset.id; let x = e.clientX, y = e.clientY; if(x + 200 > window.innerWidth) x = window.innerWidth - 210; if(y + 200 > window.innerHeight) y = window.innerHeight - 210; this.contextMenu.style.left = `${x}px`; this.contextMenu.style.top = `${y}px`; this.contextMenu.classList.remove('hidden'); }); this.safeAddListener('ctx-edit', 'click', () => this.openPageEditor(this.contextTargetId)); this.safeAddListener('ctx-split', 'click', () => this.splitPage(this.contextTargetId)); this.safeAddListener('ctx-delete', 'click', () => this.deletePages([this.contextTargetId])); this.safeAddListener('ctx-duplicate', 'click', () => { this.selectedPageIds.clear(); this.selectedPageIds.add(this.contextTargetId); this.duplicateSelected(); }); this.safeAddListener('ctx-rotate-cw', 'click', () => this.rotatePages([this.contextTargetId], 90)); this.safeAddListener('ctx-rotate-ccw', 'click', () => this.rotatePages([this.contextTargetId], -90)); }
-        async restoreSession(saved) { this.showLoader(true, 'Restoring Session...'); this.sourceFiles = []; for (const f of saved.sourceFiles) { const source = { id: f.id, name: f.name, type: f.type, file: f.file }; if(f.type === 'application/pdf') { const ab = await f.file.arrayBuffer(); source.pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise; source.pdfLibDoc = await PDFLib.PDFDocument.load(ab); } this.sourceFiles.push(source); } this.pages = []; saved.pages.forEach(p => { const source = this.sourceFiles.find(s => s.id === p.sourceFileId); if(source) this.pages.push({ id: p.id, sourceFile: source, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: p.textOverlays, brightness: p.brightness, contrast: p.contrast, crop: p.crop || {x:0,y:0,w:1,h:1} }); }); document.getElementById('start-screen').classList.add('hidden'); document.querySelector('.app-container').classList.remove('hidden'); this.renderAllPages(); this.updateStatus(); this.showLoader(false); }
+        async restoreSession(saved) { this.showLoader(true, 'Restoring Session...'); if(saved.metadata) this.metadata = saved.metadata; if(saved.protection) this.protection = saved.protection; this.sourceFiles = []; for (const f of saved.sourceFiles) { const source = { id: f.id, name: f.name, type: f.type, file: f.file }; if(f.type === 'application/pdf') { const ab = await f.file.arrayBuffer(); source.pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise; source.pdfLibDoc = await PDFLib.PDFDocument.load(ab); } this.sourceFiles.push(source); } this.pages = []; saved.pages.forEach(p => { const source = this.sourceFiles.find(s => s.id === p.sourceFileId); if(source) this.pages.push({ id: p.id, sourceFile: source, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: p.textOverlays, brightness: p.brightness, contrast: p.contrast, crop: p.crop || {x:0,y:0,w:1,h:1} }); }); document.getElementById('start-screen').classList.add('hidden'); document.querySelector('.app-container').classList.remove('hidden'); this.renderAllPages(); this.updateStatus(); this.showLoader(false); }
         saveState() { const snapshot = this.pages.map(p => ({ id: p.id, sourceFileId: p.sourceFile.id, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: p.crop })); this.historyStack.push(snapshot); if(this.historyStack.length > this.maxHistory) this.historyStack.shift(); this.redoStack = []; this.updateHistoryButtons(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata, this.protection); this.autoSaveNotify(); }
         restoreState(snapshot) { this.pages = []; snapshot.forEach(item => { const source = this.sourceFiles.find(f => f.id === item.sourceFileId); if(source) this.pages.push({ id: item.id, sourceFile: source, sourcePageIndex: item.sourcePageIndex, type: item.type, rotation: item.rotation, textOverlays: item.textOverlays || [], brightness: item.brightness, contrast: item.contrast, crop: item.crop || {x:0,y:0,w:1,h:1} }); }); this.selectedPageIds.clear(); this.renderAllPages(); this.updateStatus(); this.dbManager.saveState(this.sourceFiles, snapshot, this.metadata, this.protection); }
         performUndo() { if(this.historyStack.length) { this.redoStack.push(this.snapshotCurrentState()); this.restoreState(this.historyStack.pop()); this.updateHistoryButtons(); } }
@@ -716,17 +717,17 @@
         duplicateSelected() { if (!this.selectedPageIds.size) return; this.saveState(); const newPages = []; this.pages.forEach(p => { newPages.push(p); if (this.selectedPageIds.has(p.id)) { newPages.push({ id: `page_${Date.now()}_dup_${Math.random().toString(36).substr(2, 9)}`, sourceFile: p.sourceFile, sourcePageIndex: p.sourcePageIndex, type: p.type, rotation: p.rotation, textOverlays: JSON.parse(JSON.stringify(p.textOverlays || [])), brightness: p.brightness, contrast: p.contrast, crop: p.crop }); } }); this.pages = newPages; this.renderAllPages(); this.updateStatus(); this.showToast('Pages duplicated'); }
         rotateSelectedPages(deg) { if (this.selectedPageIds.size) this.rotatePages(Array.from(this.selectedPageIds), deg); }
         rotatePages(ids, deg) { this.saveState(); ids.forEach(id => { const p = this.pages.find(x => x.id === id); if (p) p.rotation = (p.rotation + deg + 360) % 360; }); this.renderAllPages(); this.showToast('Pages rotated'); }
-        sortByNumber() { this.saveState(); const map = new Map(); document.querySelectorAll('.page-order-input').forEach(i => map.set(i.closest('.page-item').dataset.id, parseInt(i.value) || 9999)); this.pages.sort((a, b) => map.get(a.id) - map.get(b.id)); this.renderAllPages(); this.showToast('Sorted by number'); }
+        sortByNumber() { this.saveState(); const map = new Map(); document.querySelectorAll('.page-order-input').forEach(i => map.set(i.closest('.page-item').dataset.id, parseInt(i.value) || 9999)); const origIdx = new Map(this.pages.map((p, i) => [p.id, i])); this.pages.sort((a, b) => (map.get(a.id) - map.get(b.id)) || (origIdx.get(a.id) - origIdx.get(b.id))); this.renderAllPages(); this.showToast('Sorted by number'); }
         sortByAlpha() { this.saveState(); this.pages.sort((a,b) => a.sourceFile.name.localeCompare(b.sourceFile.name)); this.renderAllPages(); this.showToast('Sorted A-Z'); }
-        updateDataOrderFromDOM() { const newPages = []; [...this.pageGrid.children].forEach(el => newPages.push(this.pages.find(p => p.id === el.dataset.id))); this.pages = newPages; this.renderAllPages(); }
-        updateStatus() { this.updateSelectionUI(); if(this.pages.length === 0) this.clearWorkspace(); }
+        updateDataOrderFromDOM() { this.pages = [...this.pageGrid.children].map(el => this.pages.find(p => p.id === el.dataset.id)).filter(Boolean); [...this.pageGrid.children].forEach((el, i) => { const inp = el.querySelector('.page-order-input'); if(inp) inp.value = i + 1; }); }
+        updateStatus() { this.updateSelectionUI(); const empty = this.pages.length === 0; if(empty) this.selectedPageIds.clear(); document.getElementById('start-screen').classList.toggle('hidden', !empty); document.querySelector('.app-container').classList.toggle('hidden', empty); }
         async clearWorkspace() { if(!confirm("Clear everything?")) return; this.saveState(); this.pages = []; this.sourceFiles = []; this.selectedPageIds.clear(); this.renderAllPages(); document.getElementById('start-screen').classList.remove('hidden'); document.querySelector('.app-container').classList.add('hidden'); await this.dbManager.clear(); }
         showLoader(show, text = 'Processing...') { const loader = document.getElementById('loader'); if(loader) { loader.classList.toggle('hidden', !show); document.getElementById('loader-text').innerText = text; } }
         toggleSidebar(show){ document.querySelector('.app-container').classList.toggle('sidebar-mobile-open', show); document.getElementById('sidebar-overlay').classList.toggle('hidden', !show); if(show) document.getElementById('sidebar').classList.remove('-translate-x-full'); else document.getElementById('sidebar').classList.add('-translate-x-full'); }
         toggleSidebarSize() { const sb = document.getElementById('sidebar'); sb.classList.toggle('w-72'); sb.classList.toggle('w-16'); const labels = sb.querySelectorAll('.text-sm, .text-xs, .truncate'); labels.forEach(l => l.classList.toggle('hidden')); }
         initMarqueeSelection() { const container = document.getElementById('page-grid-container'); if(!container) return; let isSelecting=false, startX, startY, marquee=null; container.addEventListener('mousedown', e => { if(e.target !== container && e.target !== document.getElementById('page-grid')) return; isSelecting=true; const rect=container.getBoundingClientRect(); startX=e.clientX-rect.left+container.scrollLeft; startY=e.clientY-rect.top+container.scrollTop; marquee=document.createElement('div'); marquee.className='marquee-box'; marquee.style.left=startX+'px'; marquee.style.top=startY+'px'; container.appendChild(marquee); if(!e.ctrlKey&&!e.shiftKey) { this.selectedPageIds.clear(); this.updateSelectionUI(); } }); container.addEventListener('mousemove', e => { if(!isSelecting) return; const rect=container.getBoundingClientRect(); const currentX=e.clientX-rect.left+container.scrollLeft; const currentY=e.clientY-rect.top+container.scrollTop; const width=Math.abs(currentX-startX); const height=Math.abs(currentY-startY); marquee.style.width=width+'px'; marquee.style.height=height+'px'; marquee.style.left=Math.min(currentX,startX)+'px'; marquee.style.top=Math.min(currentY,startY)+'px'; }); document.addEventListener('mouseup', () => { if(!isSelecting) return; isSelecting=false; if(marquee) { const marqueeRect=marquee.getBoundingClientRect(); document.querySelectorAll('.page-item').forEach(item => { const itemRect=item.getBoundingClientRect(); if (marqueeRect.left<itemRect.right && marqueeRect.right>itemRect.left && marqueeRect.top<itemRect.bottom && marqueeRect.bottom>itemRect.top) { this.selectedPageIds.add(item.dataset.id); } }); marquee.remove(); } this.updateSelectionUI(); }); }
         initEventListeners() {
-            document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); this.performUndo(); } if ((e.ctrlKey||e.metaKey) && e.key === 'y') { e.preventDefault(); this.performRedo(); } if ((e.key === 'Delete'||e.key === 'Backspace') && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) this.deleteSelectedPages(); if ((e.ctrlKey||e.metaKey) && e.key === 'a') { e.preventDefault(); this.pages.forEach(p=>this.selectedPageIds.add(p.id)); this.updateSelectionUI(); } if(['ArrowRight','ArrowLeft'].includes(e.key) && document.activeElement.classList.contains('page-item')) { const items = [...document.querySelectorAll('.page-item')]; const idx = items.indexOf(document.activeElement); if(e.key==='ArrowRight' && idx < items.length-1) items[idx+1].focus(); if(e.key==='ArrowLeft' && idx > 0) items[idx-1].focus(); } });
+            document.addEventListener('keydown', e => { const inField = ['INPUT','TEXTAREA'].includes(document.activeElement.tagName); if (inField && ['z','y','a'].includes(e.key)) return; if ((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); this.performUndo(); } if ((e.ctrlKey||e.metaKey) && e.key === 'y') { e.preventDefault(); this.performRedo(); } if ((e.key === 'Delete'||e.key === 'Backspace') && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) this.deleteSelectedPages(); if ((e.ctrlKey||e.metaKey) && e.key === 'a') { e.preventDefault(); this.pages.forEach(p=>this.selectedPageIds.add(p.id)); this.updateSelectionUI(); } if(['ArrowRight','ArrowLeft'].includes(e.key) && document.activeElement.classList.contains('page-item')) { const items = [...document.querySelectorAll('.page-item')]; const idx = items.indexOf(document.activeElement); if(e.key==='ArrowRight' && idx < items.length-1) items[idx+1].focus(); if(e.key==='ArrowLeft' && idx > 0) items[idx-1].focus(); } });
             window.addEventListener('beforeunload', e => { if (this.pages.length > 0) { e.preventDefault(); e.returnValue = ''; } });
             document.getElementById('exportMenuBtn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('exportMenuDropdown').classList.toggle('hidden'); }); document.addEventListener('click', () => document.getElementById('exportMenuDropdown').classList.add('hidden'));
             this.safeAddListener('undoBtn', 'click', () => this.performUndo()); this.safeAddListener('redoBtn', 'click', () => this.performRedo()); this.safeAddListener('zoomSlider', 'input', e => document.documentElement.style.setProperty('--grid-size', `${e.target.value}px`)); this.safeAddListener('darkModeToggle', 'click', () => document.documentElement.classList.toggle('dark'));
@@ -762,13 +763,15 @@
             ['startDropZone', 'main-view'].forEach(id => { const z = document.getElementById(id); if(z) { z.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); z.classList.add('dragover'); }); z.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); z.classList.remove('dragover'); }); z.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); z.classList.remove('dragover'); this.addFiles(Array.from(e.dataTransfer.files)); }); } });
         }
         hexToRgb(hex) { const r = parseInt(hex.substr(1, 2), 16) / 255; const g = parseInt(hex.substr(3, 2), 16) / 255; const b = parseInt(hex.substr(5, 2), 16) / 255; return { r, g, b }; }
+        // pdf-lib rotates about the draw origin, so a rotated image lands off-page unless it is anchored back in.
+        imagePlacement(w, h, crop, r) { const cx = w*crop.x, cy = h*(1-crop.y-crop.h), cw = w*crop.w, ch = h*crop.h; if (r === 90) return { x: cy+ch, y: -cx }; if (r === 180) return { x: cx+cw, y: cy+ch }; if (r === 270) return { x: -cy, y: cx+cw }; return { x: -cx, y: -cy }; }
         getFont(family, isBold, isItalic) { if (family === 'Helvetica') return isBold && isItalic ? 'HelveticaBoldOblique' : isBold ? 'HelveticaBold' : isItalic ? 'HelveticaOblique' : 'Helvetica'; if (family === 'TimesRoman') return isBold && isItalic ? 'TimesRomanBoldItalic' : isBold ? 'TimesRomanBold' : isItalic ? 'TimesRomanItalic' : 'TimesRoman'; if (family === 'Courier') return isBold && isItalic ? 'CourierBoldOblique' : isBold ? 'CourierBold' : isItalic ? 'CourierOblique' : 'Courier'; return 'Helvetica'; }
         
         // EXPORT
         async createPdf(preview, print, onlySelected) {
             let targetPages = this.pages;
             if(onlySelected && this.selectedPageIds.size > 0) targetPages = this.pages.filter(p => this.selectedPageIds.has(p.id));
-            if (!targetPages.length) return; this.showLoader(true, 'Generating PDF...');
+            if (!targetPages.length) return; if(this.protection.password) { this.showToast('Password protection is not supported by this build — file was NOT exported.', 'error'); return; } this.showLoader(true, 'Generating PDF...');
             try {
                 const doc = await PDFLib.PDFDocument.create(); doc.setTitle(this.metadata.title); doc.setAuthor(this.metadata.author); doc.setSubject(this.metadata.subject);
                 const embeddedFonts = {}; const fontList = ['Helvetica','HelveticaBold','HelveticaOblique','HelveticaBoldOblique','TimesRoman','TimesRomanBold','TimesRomanItalic','TimesRomanBoldItalic','Courier','CourierBold','CourierOblique','CourierBoldOblique'];
@@ -777,54 +780,44 @@
                 for (let i=0; i<targetPages.length; i++) {
                     const p = targetPages[i]; let page;
                     const crop = p.crop || {x:0, y:0, w:1, h:1};
-                    if (p.filter && (p.filter !== 'none' || p.brightness != 100 || p.contrast != 100) && p.sourceFile.type.startsWith('image')) {
-                        const img = new Image(); img.src = URL.createObjectURL(p.sourceFile.file); await new Promise(r => img.onload = r);
-                        const canvas = document.createElement('canvas'); 
+                    const rot = ((p.rotation % 360) + 360) % 360; const isRotated = rot === 90 || rot === 270;
+                    if (p.type === 'image' && (p.brightness != 100 || p.contrast != 100)) {
+                        const img = new Image(); const url = URL.createObjectURL(p.sourceFile.file); img.src = url; await new Promise(r => { img.onload = r; img.onerror = r; }); URL.revokeObjectURL(url);
+                        if (!img.naturalWidth) throw new Error(`Could not decode ${p.sourceFile.name}`);
+                        const canvas = document.createElement('canvas');
                         canvas.width = img.width * crop.w; canvas.height = img.height * crop.h; const ctx = canvas.getContext('2d');
-                        ctx.filter = `brightness(${p.brightness}%) contrast(${p.contrast}%)`; 
+                        ctx.filter = `brightness(${p.brightness}%) contrast(${p.contrast}%)`;
                         ctx.drawImage(img, img.width*crop.x, img.height*crop.y, img.width*crop.w, img.height*crop.h, 0, 0, canvas.width, canvas.height);
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8); const emb = await doc.embedJpg(dataUrl); page = doc.addPage([emb.width, emb.height]); page.drawImage(emb, {x:0, y:0, width: emb.width, height: emb.height});
+                        // JPEG has no alpha, so a filtered transparent PNG would composite onto black.
+                        const emb = p.sourceFile.type.includes('png') ? await doc.embedPng(canvas.toDataURL('image/png')) : await doc.embedJpg(canvas.toDataURL('image/jpeg', 0.8));
+                        page = doc.addPage([isRotated ? emb.height : emb.width, isRotated ? emb.width : emb.height]);
+                        const pos = this.imagePlacement(emb.width, emb.height, {x:0, y:0, w:1, h:1}, rot);
+                        page.drawImage(emb, { x: pos.x, y: pos.y, width: emb.width, height: emb.height, rotate: PDFLib.degrees(rot) });
                     } else {
                         if (p.type === 'blank') page = doc.addPage([595, 842]);
-                        else if (p.type === 'image') { 
-                            const buff = await p.sourceFile.file.arrayBuffer(); const emb = p.sourceFile.type.includes('png') ? await doc.embedPng(buff) : await doc.embedJpg(buff); const r = p.rotation % 360; const isRotated = r === 90 || r === 270; 
+                        else if (p.type === 'image') {
+                            const buff = await p.sourceFile.file.arrayBuffer(); const emb = p.sourceFile.type.includes('png') ? await doc.embedPng(buff) : await doc.embedJpg(buff);
                             const finalW = emb.width * crop.w; const finalH = emb.height * crop.h;
                             page = doc.addPage([isRotated ? finalH : finalW, isRotated ? finalW : finalH]);
-                            page.drawImage(emb, { x: -emb.width*crop.x, y: -emb.height*(1-crop.y-crop.h), width: emb.width, height: emb.height, rotate: PDFLib.degrees(r) });
-                        } 
-                        else { 
-                            const [cp] = await doc.copyPages(p.sourceFile.pdfLibDoc, [p.sourcePageIndex]); 
+                            const pos = this.imagePlacement(emb.width, emb.height, crop, rot);
+                            page.drawImage(emb, { x: pos.x, y: pos.y, width: emb.width, height: emb.height, rotate: PDFLib.degrees(rot) });
+                        }
+                        else {
+                            const [cp] = await doc.copyPages(p.sourceFile.pdfLibDoc, [p.sourcePageIndex]);
                             const { x, y, width, height } = cp.getMediaBox();
                             cp.setCropBox(x + width * crop.x, y + height * crop.y, width * crop.w, height * crop.h);
-                            cp.setRotation(PDFLib.degrees((cp.getRotation().angle + p.rotation) % 360)); 
+                            cp.setRotation(PDFLib.degrees(((cp.getRotation().angle + rot) % 360 + 360) % 360));
                             page = doc.addPage(cp); 
                         }
                     }
-                    if (p.textOverlays) { const { width, height } = page.getSize(); p.textOverlays.forEach(async t => { const x = width * (t.xPercent / 100); const y = height - (height * (t.yPercent / 100)); 
+                    if (p.textOverlays) { const { width, height } = page.getSize(); for (const t of p.textOverlays) { const x = width * (t.xPercent / 100); const y = height - (height * (t.yPercent / 100));
                         if(t.isImage) { const pngImage = await doc.embedPng(t.imageData); const imgDims = pngImage.scale(0.5); page.drawImage(pngImage, { x: x - imgDims.width/2, y: y - imgDims.height/2, width: imgDims.width, height: imgDims.height }); }
-                        else { const fontKey = this.getFont(t.font, t.isBold, t.isItalic); page.drawText(t.text, { x, y, size: t.size, font: embeddedFonts[fontKey], color: PDFLib.rgb(this.hexToRgb(t.color).r, this.hexToRgb(t.color).g, this.hexToRgb(t.color).b), opacity: t.opacity || 1, rotate: PDFLib.degrees(t.rotation || 0), xCentered: true, yCentered: true }); } 
-                    }); }
+                        else { const fontKey = this.getFont(t.font, t.isBold, t.isItalic); page.drawText(t.text, { x, y, size: t.size, font: embeddedFonts[fontKey], color: PDFLib.rgb(this.hexToRgb(t.color).r, this.hexToRgb(t.color).g, this.hexToRgb(t.color).b), opacity: t.opacity || 1, rotate: PDFLib.degrees(t.rotation || 0), xCentered: true, yCentered: true }); }
+                    } }
                     if (addPageNum) { const { width } = page.getSize(); page.drawText(`${i+1} / ${targetPages.length}`, { x: width/2, y: 20, size: 10, font: embeddedFonts['Helvetica'], color: PDFLib.rgb(0,0,0), xCentered: true }); }
                 }
                 
-                // SAVE WITH ENCRYPTION IF PASSWORD SET
-                if(this.protection.password) {
-                    await doc.encrypt({
-                        userPassword: this.protection.password,
-                        ownerPassword: this.protection.password,
-                        permissions: {
-                            printing: 'highResolution',
-                            modifying: false,
-                            copying: false,
-                            annotating: false,
-                            fillingForms: false,
-                            contentAccessibility: false,
-                            documentAssembly: false
-                        }
-                    });
-                }
-                
-                const pdfBytes = await doc.save(); 
+                const pdfBytes = await doc.save();
                 
                 const blob = new Blob([pdfBytes], { type: 'application/pdf' }); const url = URL.createObjectURL(blob);
                 if (preview) window.open(url, '_blank'); else if (print) { const iframe = document.getElementById('printFrame'); iframe.src = url; iframe.onload = () => { iframe.contentWindow.print(); }; } else { const link = document.createElement('a'); link.href = url; const nameInput = document.getElementById('filenameInput'); link.download = (nameInput ? nameInput.value : 'document') + '.pdf'; document.body.appendChild(link); link.click(); document.body.removeChild(link); this.showToast('PDF Exported Successfully'); }
