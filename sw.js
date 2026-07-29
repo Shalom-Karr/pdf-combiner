@@ -6,16 +6,14 @@ const APP_SHELL = [
   './pro.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png',
-  './css/cropper.min.css'
+  './icon-512.png'
 ];
 const JS_LIBS = [
   './js/pdf-lib.min.js',
   './js/pdf.min.js',
   './js/pdf.worker.min.js',
   './js/sortable.min.js',
-  './js/tailwindcss.js',
-  './js/cropper.min.js'
+  './js/tailwindcss.js'
 ];
 
 self.addEventListener('install', function(event) {
